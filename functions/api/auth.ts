@@ -13,37 +13,50 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
 
     const { pin } = await context.request.json() as { pin: string };
 
-    const manager = await context.env.DB.prepare(
+    if (!pin || pin.length < 6) {
+      return new Response(JSON.stringify({ error: "Invalid PIN length" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const user = await context.env.DB.prepare(
       `SELECT u.id, u.name, u.phone, u.role, u.service_center_id, 
               s.name as center_name, s.location as center_location, s.type as center_type, 
               s.contact as center_contact, s.address as center_address
        FROM users u
-       JOIN service_centers s ON u.service_center_id = s.id
+       LEFT JOIN service_centers s ON u.service_center_id = s.id
        WHERE u.pin = ? AND u.status = 'active'`
-    ).bind(pin).first();
+    ).bind(pin.trim()).first();
 
-    if (!manager) {
-      return new Response(JSON.stringify({ error: "Invalid PIN or manager inactive" }), {
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Invalid 8-digit PIN. Please try again." }), {
         status: 401,
         headers: { "Content-Type": "application/json" }
       });
     }
 
+    if (user.role === 'admin') {
+      return new Response(JSON.stringify({
+        role: 'admin',
+        name: user.name || 'Master Admin'
+      }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
     return new Response(JSON.stringify({
-      manager: {
-        id: manager.id,
-        name: manager.name,
-        phone: manager.phone,
-        role: manager.role,
-        serviceCenterId: manager.service_center_id
-      },
-      center: {
-        id: manager.service_center_id,
-        name: manager.center_name,
-        location: manager.center_location,
-        type: manager.center_type,
-        contact: manager.center_contact,
-        address: manager.center_address
+      role: 'manager',
+      name: user.name,
+      managerId: user.id,
+      serviceCenterId: user.service_center_id,
+      serviceCenter: {
+        id: user.service_center_id,
+        name: user.center_name,
+        location: user.center_location,
+        type: user.center_type,
+        contact: user.center_contact,
+        address: user.center_address
       }
     }), {
       headers: { "Content-Type": "application/json" }

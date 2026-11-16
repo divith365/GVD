@@ -24,13 +24,17 @@ export const Header: React.FC<HeaderProps> = ({ session, onLogout, onSwitchSessi
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
         {/* Logo and Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-400 flex items-center justify-center font-black text-xl shadow-md text-white">
-            G
+          <div className="h-10 flex items-center justify-center">
+            <img
+              src="/logo.webp"
+              alt="GVD Auto World"
+              className="h-9 w-auto object-contain drop-shadow"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
-                GVD AutoCare <span className="text-xs px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 font-semibold uppercase tracking-wider">PWA</span>
+              <h1 className="font-bold text-base sm:text-lg tracking-tight text-white flex items-center gap-1.5">
+                GVD Auto World <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase tracking-wider border border-amber-500/30">PWA</span>
               </h1>
             </div>
             {session && (

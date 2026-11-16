@@ -48,7 +48,7 @@ export const INITIAL_MANAGERS: Manager[] = [
     id: 'mgr-1',
     name: 'Rahul Sharma',
     phone: '+91 98765 00001',
-    pin: '1234',
+    pin: '12345678',
     serviceCenterId: 'sc-car-1',
     status: 'active',
     createdAt: '2026-01-15T10:00:00Z'
@@ -57,7 +57,7 @@ export const INITIAL_MANAGERS: Manager[] = [
     id: 'mgr-2',
     name: 'Amit Patel',
     phone: '+91 98765 00002',
-    pin: '2345',
+    pin: '23456789',
     serviceCenterId: 'sc-bike-1',
     status: 'active',
     createdAt: '2026-01-16T11:00:00Z'
@@ -66,7 +66,7 @@ export const INITIAL_MANAGERS: Manager[] = [
     id: 'mgr-3',
     name: 'Vikram Singh',
     phone: '+91 98765 00003',
-    pin: '3456',
+    pin: '34567890',
     serviceCenterId: 'sc-car-2',
     status: 'active',
     createdAt: '2026-02-02T10:00:00Z'
@@ -75,7 +75,7 @@ export const INITIAL_MANAGERS: Manager[] = [
     id: 'mgr-4',
     name: 'Suresh Kumar',
     phone: '+91 98765 00004',
-    pin: '4567',
+    pin: '45678901',
     serviceCenterId: 'sc-bike-2',
     status: 'active',
     createdAt: '2026-02-08T12:00:00Z'

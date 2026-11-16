@@ -182,6 +182,48 @@ class AppStore {
     return { manager, center };
   }
 
+  async authenticateWithPin(pin: string): Promise<SessionUser | null> {
+    // 1. Try remote Cloudflare D1 API first
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pin.trim() })
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        if (data.role === 'admin') {
+          return { role: 'admin', name: data.name || 'Master Admin' };
+        }
+        return {
+          role: 'manager',
+          name: data.manager?.name || data.name,
+          managerId: data.manager?.id || data.managerId,
+          serviceCenterId: data.manager?.serviceCenterId || data.serviceCenterId,
+          serviceCenter: data.center || data.serviceCenter
+        };
+      }
+    } catch (e) {
+      console.log('Remote auth failed, checking local state', e);
+    }
+
+    // 2. Local fallback
+    if (pin.trim() === '88888888') {
+      return { role: 'admin', name: 'Master Admin' };
+    }
+    const mgr = this.verifyManagerPin(pin.trim());
+    if (mgr) {
+      return {
+        role: 'manager',
+        name: mgr.manager.name,
+        managerId: mgr.manager.id,
+        serviceCenterId: mgr.manager.serviceCenterId,
+        serviceCenter: mgr.center
+      };
+    }
+    return null;
+  }
+
   // --- VEHICLES / INSPECTIONS ---
   getVehicles(serviceCenterId?: string): VehicleRecord[] {
     if (serviceCenterId) {

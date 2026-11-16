@@ -99,7 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAutoGeneratePin = () => {
-    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+    const randomPin = Math.floor(10000000 + Math.random() * 90000000).toString();
     setMgrPin(randomPin);
   };
 
@@ -719,26 +719,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-300">4-Digit Login PIN *</label>
+                  <label className="text-xs font-semibold text-slate-300">8-Digit Security PIN *</label>
                   <button
                     type="button"
                     onClick={handleAutoGeneratePin}
-                    className="text-[11px] text-amber-400 hover:underline flex items-center gap-1"
+                    className="text-[11px] text-amber-400 hover:underline flex items-center gap-1 font-semibold"
                   >
-                    <Sparkles className="w-3 h-3" /> Auto Generate
+                    <Sparkles className="w-3 h-3" /> Auto Generate 8-Digits
                   </button>
                 </div>
                 <input
                   type="text"
-                  maxLength={4}
-                  placeholder="e.g. 5566"
+                  maxLength={8}
+                  placeholder="e.g. 12345678"
                   value={mgrPin}
                   onChange={(e) => setMgrPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-base font-mono font-bold text-amber-300 focus:outline-none focus:border-brand-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-lg font-mono font-bold text-amber-300 focus:outline-none focus:border-brand-500 tracking-wider"
                   required
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Manager will enter this 4-digit PIN on the mobile keypad to log in.
+                  Manager will enter this 8-digit PIN on the mobile keypad to auto-login.
                 </p>
               </div>
 
