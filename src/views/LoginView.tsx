@@ -75,7 +75,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </div>
 
           <h2 className="text-sm sm:text-base font-bold text-amber-300 tracking-wide uppercase mt-1">
-            Service Inspection & Detailing PWA
+            Service Inspection & Detailing Portal
           </h2>
           <p className="text-[11px] text-slate-400 mt-0.5">
             {isAdminMode ? 'Enter 8-Digit Master Admin Security PIN' : 'Enter 8-Digit Manager PIN to Auto-Login'}

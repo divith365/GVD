@@ -1,6 +1,6 @@
-# GVD AutoCare - Service & Inspection Progressive Web App (PWA)
+# GVD Auto World - Vehicle Inspection & Detailing Portal
 
-A mobile-first Progressive Web App designed for multi-branch car and bike service centers. Built with React, TypeScript, Tailwind CSS, and Vite PWA, architected for serverless deployment with **Cloudflare D1** (Database) and **Cloudflare R2** (Zero-egress Object Storage).
+A mobile-first web app designed for multi-branch car and bike service centers. Built with React, TypeScript, Tailwind CSS, and Cloudflare D1 (Database) and Cloudflare R2 (Zero-egress Object Storage).
 
 ---
 

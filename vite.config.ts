@@ -9,21 +9,21 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'GVD AutoCare Inspection PWA',
-        short_name: 'GVD Care',
-        description: 'Car & Bike Service Inspection & Photo Comparison PWA',
-        theme_color: '#0284c7',
-        background_color: '#0f172a',
+        name: 'GVD Auto World',
+        short_name: 'GVD Auto',
+        description: 'Car & Bike Service Inspection & Detailing',
+        theme_color: '#d97706',
+        background_color: '#020617',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: '/logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/logo.png',
             sizes: '512x512',
             type: 'image/png'
           }

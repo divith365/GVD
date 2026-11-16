@@ -33,8 +33,8 @@ export const Header: React.FC<HeaderProps> = ({ session, onLogout, onSwitchSessi
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-base sm:text-lg tracking-tight text-white flex items-center gap-1.5">
-                GVD Auto World <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase tracking-wider border border-amber-500/30">PWA</span>
+              <h1 className="font-bold text-base sm:text-lg tracking-tight text-white">
+                GVD Auto World
               </h1>
             </div>
             {session && (

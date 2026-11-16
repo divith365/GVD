@@ -1,0 +1,85 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/photos/:path*",
+      "mountPath": "/api/photos",
+      "method": "GET",
+      "module": [
+        "api/photos/[[path]].ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/auth",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/auth.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/centers",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/centers.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/centers",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/centers.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/managers",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/managers.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/managers",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/managers.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/upload",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/upload.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/vehicles",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/vehicles.ts:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/vehicles",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/vehicles.ts:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/vehicles",
+      "mountPath": "/api",
+      "method": "PUT",
+      "module": [
+        "api/vehicles.ts:onRequestPut"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
