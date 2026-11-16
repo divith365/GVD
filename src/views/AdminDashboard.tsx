@@ -519,46 +519,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* R2 Card */}
-            <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2.5">
+            <div className="bg-slate-950 p-5 rounded-2xl border border-emerald-500/30 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-white flex items-center gap-1.5">
                   <Database className="w-4 h-4 text-orange-400" /> Cloudflare R2 Bucket
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
-                  Awaiting Credentials
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active & Connected
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Used to store full-resolution car & bike inspection photos (Check-in & Check-out) with zero egress fees and instant CDN delivery.
+                Full-resolution inspection photo storage active with zero egress fees and edge streaming via /api/photos.
               </p>
               <div className="font-mono text-[11px] bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 space-y-1">
-                <div>Bucket Name: <span className="text-orange-400">gvd-inspection-photos</span></div>
-                <div>Storage Path: <span className="text-slate-400">/photos/[centerId]/[vehicleId]/[stage]_[tag].jpg</span></div>
+                <div>Bucket Name: <span className="text-orange-400 font-bold">gvd-inspection-photos</span></div>
+                <div>Storage Binding: <span className="text-emerald-400 font-bold">PHOTOS_BUCKET (Connected)</span></div>
+                <div>Public Stream: <span className="text-slate-400">/api/photos/inspections/...</span></div>
               </div>
             </div>
 
             {/* D1 Card */}
-            <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2.5">
+            <div className="bg-slate-950 p-5 rounded-2xl border border-emerald-500/30 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-white flex items-center gap-1.5">
                   <Database className="w-4 h-4 text-cyan-400" /> Cloudflare D1 Database
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
-                  Awaiting Credentials
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active & Connected
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Serverless SQL database storing service centers, managers with hashed PINs, vehicle job cards, and photo metadata.
+                Serverless SQL database storing service centers, managers with PINs, vehicle job cards, and photo metadata.
               </p>
               <div className="font-mono text-[11px] bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 space-y-1">
-                <div>Database Name: <span className="text-cyan-400">gvd_autocare_db</span></div>
-                <div>Tables: <span className="text-slate-400">service_centers, users, service_records, inspection_photos</span></div>
+                <div>Database Name: <span className="text-cyan-400 font-bold">gvd_autocare_db</span></div>
+                <div>Database ID: <span className="text-slate-400">9a193cb4-fac9-44a9-b81a-a257cbd0f8c0</span></div>
+                <div>Binding: <span className="text-emerald-400 font-bold">DB (Connected)</span></div>
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-200">
-            <strong>Next Step:</strong> You can share your Cloudflare Account ID and API Token (or R2 Access Keys) whenever ready, and we will connect the live Workers backend API to persist everything straight into Cloudflare D1 and R2!
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span><strong>All Systems Connected:</strong> Both Cloudflare D1 SQL database and Cloudflare R2 photo storage are active and bound to your live deployment at <strong>gvd-autocare.pages.dev</strong>!</span>
           </div>
         </div>
       )}
