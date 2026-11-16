@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Building2, Users, Car, Bike, Plus, Search, ShieldCheck, 
   MapPin, Phone, KeyRound, CheckCircle2, SplitSquareVertical, 
-  Cloud, Database, ExternalLink, Eye, EyeOff, Sparkles, Filter
+  Cloud, Database, ExternalLink, Eye, EyeOff, Sparkles, Filter, Clock
 } from 'lucide-react';
 import { ServiceCenter, Manager, VehicleRecord, ServiceCenterType } from '../types';
 import { appStore, SessionUser } from '../services/store';
@@ -21,6 +21,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'vehicles' | 'centers' | 'managers' | 'cloudflare'>('vehicles');
   const [selectedCenterId, setSelectedCenterId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'checked_in' | 'checked_out'>('all');
   
   // Modals
   const [isAddCenterOpen, setIsAddCenterOpen] = useState(false);
@@ -44,9 +45,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const centers = appStore.getServiceCenters();
   const managers = appStore.getManagers();
 
-  // Filtered vehicles based on selected center dropdown
+  // Filtered vehicles based on selected center dropdown and status filter
   const filteredVehicles = vehicles.filter(v => {
     if (selectedCenterId !== 'all' && v.serviceCenterId !== selectedCenterId) return false;
+    if (statusFilter !== 'all' && v.status !== statusFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return v.vehicleNumber.toLowerCase().includes(q) ||
@@ -174,43 +176,113 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* Aggregate KPI Cards */}
+        {/* Aggregate KPI Cards - All Clickable */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-            <span className="text-xs text-slate-400 font-medium block">Total Centers</span>
+          {/* 1. Total Centers (Clickable -> Switches to Centers tab) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('centers')}
+            className={`text-left p-3.5 rounded-2xl border transition group cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              activeTab === 'centers'
+                ? 'bg-amber-500/15 border-amber-500/60 shadow-lg shadow-amber-500/10'
+                : 'bg-slate-950/70 border-slate-800 hover:border-amber-500/40 hover:bg-slate-900'
+            }`}
+            title="Click to view and manage service centers"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium group-hover:text-amber-300 transition">Total Centers</span>
+              <Building2 className={`w-3.5 h-3.5 transition ${activeTab === 'centers' ? 'text-amber-400' : 'text-slate-500 group-hover:text-amber-400'}`} />
+            </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-black text-white">{centers.length}</span>
-              <span className="text-[10px] text-slate-500 font-medium">({centers.filter(c => c.type === 'car').length} Car / {centers.filter(c => c.type === 'bike').length} Bike)</span>
+              <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">({centers.filter(c => c.type === 'car').length} Car / {centers.filter(c => c.type === 'bike').length} Bike)</span>
             </div>
-          </div>
+            <span className="text-[10px] text-amber-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-amber-300">
+              View centers ➔
+            </span>
+          </button>
 
-          <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-            <span className="text-xs text-slate-400 font-medium block">Active Managers</span>
+          {/* 2. Active Managers (Clickable -> Switches to Managers tab) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('managers')}
+            className={`text-left p-3.5 rounded-2xl border transition group cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              activeTab === 'managers'
+                ? 'bg-purple-500/15 border-purple-500/60 shadow-lg shadow-purple-500/10'
+                : 'bg-slate-950/70 border-slate-800 hover:border-purple-500/40 hover:bg-slate-900'
+            }`}
+            title="Click to view managers and login PINs"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium group-hover:text-purple-300 transition">Active Managers</span>
+              <Users className={`w-3.5 h-3.5 transition ${activeTab === 'managers' ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'}`} />
+            </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-black text-white">{managers.length}</span>
               <span className="text-[10px] text-emerald-400 font-medium">PIN Enabled</span>
             </div>
-          </div>
+            <span className="text-[10px] text-purple-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-purple-300">
+              View managers ➔
+            </span>
+          </button>
 
-          <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-            <span className="text-xs text-sky-400 font-medium block">In Service (Active)</span>
+          {/* 3. In Service Active (Clickable -> Filters Vehicles to checked_in) */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('vehicles');
+              setStatusFilter(statusFilter === 'checked_in' ? 'all' : 'checked_in');
+            }}
+            className={`text-left p-3.5 rounded-2xl border transition group cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              activeTab === 'vehicles' && statusFilter === 'checked_in'
+                ? 'bg-sky-500/20 border-sky-500/60 shadow-lg shadow-sky-500/15'
+                : 'bg-slate-950/70 border-slate-800 hover:border-sky-500/40 hover:bg-slate-900'
+            }`}
+            title="Click to filter In-Service vehicles"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-sky-400 font-medium group-hover:text-sky-300 transition">In Service (Active)</span>
+              <Clock className={`w-3.5 h-3.5 transition ${activeTab === 'vehicles' && statusFilter === 'checked_in' ? 'text-sky-400' : 'text-sky-500'}`} />
+            </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-black text-white">
                 {vehicles.filter(v => (selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId) && v.status === 'checked_in').length}
               </span>
               <span className="text-[10px] text-slate-500">Vehicles</span>
             </div>
-          </div>
+            <span className="text-[10px] text-sky-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-sky-300">
+              {statusFilter === 'checked_in' && activeTab === 'vehicles' ? '● Filtered Active' : 'Filter active ➔'}
+            </span>
+          </button>
 
-          <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-            <span className="text-xs text-emerald-400 font-medium block">Completed Checkouts</span>
+          {/* 4. Completed Checkouts (Clickable -> Filters Vehicles to checked_out) */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('vehicles');
+              setStatusFilter(statusFilter === 'checked_out' ? 'all' : 'checked_out');
+            }}
+            className={`text-left p-3.5 rounded-2xl border transition group cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              activeTab === 'vehicles' && statusFilter === 'checked_out'
+                ? 'bg-emerald-500/20 border-emerald-500/60 shadow-lg shadow-emerald-500/15'
+                : 'bg-slate-950/70 border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900'
+            }`}
+            title="Click to filter Completed vehicles for Before/After compare"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-emerald-400 font-medium group-hover:text-emerald-300 transition">Completed Checkouts</span>
+              <CheckCircle2 className={`w-3.5 h-3.5 transition ${activeTab === 'vehicles' && statusFilter === 'checked_out' ? 'text-emerald-400' : 'text-emerald-500'}`} />
+            </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-black text-white">
                 {vehicles.filter(v => (selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId) && v.status === 'checked_out').length}
               </span>
               <span className="text-[10px] text-emerald-400">Ready to Compare</span>
             </div>
-          </div>
+            <span className="text-[10px] text-emerald-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-emerald-300">
+              {statusFilter === 'checked_out' && activeTab === 'vehicles' ? '● Filtered Completed' : 'Filter compare ➔'}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -290,28 +362,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* TAB 1: VEHICLES & COMPARISON */}
       {activeTab === 'vehicles' && (
         <div className="space-y-4">
-          {/* Search bar */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search by registration number, customer, or service..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
-              />
+          {/* Search bar & Status Filter Buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Status Filter Buttons */}
+            <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                  statusFilter === 'all'
+                    ? 'bg-brand-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Statuses
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('checked_in')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                  statusFilter === 'checked_in'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-sky-300'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>In Service</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('checked_out')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                  statusFilter === 'checked_out'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-emerald-300'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Completed</span>
+              </button>
             </div>
-            <span className="text-xs text-slate-400">
-              Showing {filteredVehicles.length} vehicles
-            </span>
+
+            <div className="flex items-center gap-3 flex-1 justify-end">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by registration number, customer, or service..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+              <span className="text-xs text-slate-400 whitespace-nowrap hidden sm:inline">
+                {filteredVehicles.length} vehicles
+              </span>
+            </div>
           </div>
 
           {filteredVehicles.length === 0 ? (
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-500">
               <Car className="w-12 h-12 mx-auto mb-2 text-slate-600" />
               <p className="text-sm font-semibold text-slate-300">No vehicle records found for selected filter</p>
-              <p className="text-xs text-slate-500 mt-1">Switch filter to "All Service Centers" or add new check-ins via Manager view.</p>
+              <p className="text-xs text-slate-500 mt-1">Try resetting status to "All Statuses" or switch service centers.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -324,12 +437,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 return (
                   <div
                     key={v.id}
-                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-4.5 transition flex flex-col justify-between space-y-3.5 group shadow-lg"
+                    onClick={() => onViewComparison(v)}
+                    className="bg-slate-900 border border-slate-800 hover:border-brand-500/60 rounded-2xl p-4.5 transition flex flex-col justify-between space-y-3.5 group shadow-lg cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                    title="Click card to view photo inspection & comparison"
                   >
                     <div>
                       {/* Number Plate + Status */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20">
+                        <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 group-hover:border-amber-400/50 transition">
                           {v.vehicleNumber}
                         </span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
@@ -372,7 +487,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                     {/* Action button */}
                     <button
-                      onClick={() => onViewComparison(v)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewComparison(v);
+                      }}
                       className="w-full py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow shadow-brand-500/20 active:scale-98"
                     >
                       <SplitSquareVertical className="w-3.5 h-3.5" />
@@ -397,7 +516,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               return (
                 <div
                   key={c.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3"
+                  onClick={() => {
+                    setSelectedCenterId(c.id);
+                    setActiveTab('vehicles');
+                    setStatusFilter('all');
+                  }}
+                  className="bg-slate-900 border border-slate-800 hover:border-amber-500/60 rounded-2xl p-5 shadow-lg space-y-3 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition group"
+                  title={`Click to view all jobs for ${c.name}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3">
@@ -409,7 +534,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {c.type === 'car' ? <Car className="w-6 h-6" /> : <Bike className="w-6 h-6" />}
                       </div>
                       <div>
-                        <h3 className="font-bold text-white text-base">{c.name}</h3>
+                        <h3 className="font-bold text-white text-base group-hover:text-amber-300 transition flex items-center gap-1.5">
+                          <span>{c.name}</span>
+                          <span className="text-amber-400 opacity-0 group-hover:opacity-100 transition text-xs font-normal">➔</span>
+                        </h3>
                         <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                           <MapPin className="w-3.5 h-3.5 text-slate-500" /> {c.location}
                         </p>
@@ -431,7 +559,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-1">
                     <span>Contact: <strong className="text-slate-200">{c.contact}</strong></span>
                     <span>Managers: <strong className="text-purple-300">{centerMgrs.length}</strong></span>
-                    <span>Total Jobs: <strong className="text-sky-300">{centerVehs.length}</strong></span>
+                    <span className="text-amber-300 font-bold group-hover:underline">
+                      Total Jobs: {centerVehs.length} (Click to view) ➔
+                    </span>
                   </div>
                 </div>
               );
@@ -447,11 +577,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {managers.map(mgr => {
               const assignedCenter = centers.find(c => c.id === mgr.serviceCenterId);
               const isRevealed = !!revealedPins[mgr.id];
+              const managerVehicles = vehicles.filter(v => v.serviceCenterId === mgr.serviceCenterId);
 
               return (
                 <div
                   key={mgr.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-4.5 shadow-lg space-y-3"
+                  onClick={() => {
+                    if (assignedCenter) {
+                      setSelectedCenterId(assignedCenter.id);
+                      setActiveTab('vehicles');
+                      setStatusFilter('all');
+                    }
+                  }}
+                  className="bg-slate-900 border border-slate-800 hover:border-purple-500/60 rounded-2xl p-4.5 shadow-lg space-y-3 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition group"
+                  title="Click to view this manager's service center jobs"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
@@ -459,7 +598,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {mgr.name.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-white text-sm">{mgr.name}</h4>
+                        <h4 className="font-bold text-white text-sm group-hover:text-purple-300 transition flex items-center gap-1">
+                          <span>{mgr.name}</span>
+                          <span className="text-purple-400 opacity-0 group-hover:opacity-100 transition text-xs">➔</span>
+                        </h4>
                         <p className="text-[11px] text-slate-400">{mgr.phone}</p>
                       </div>
                     </div>
@@ -478,12 +620,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* PIN Display & Toggle */}
-                  <div className="flex items-center justify-between bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60">
+                  <div 
+                    onClick={(e) => e.stopPropagation()} 
+                    className="flex items-center justify-between bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60"
+                  >
                     <div className="flex items-center gap-2">
                       <KeyRound className="w-4 h-4 text-amber-400" />
                       <span className="text-xs text-slate-400">Login PIN:</span>
                       <span className="font-mono font-bold text-sm text-amber-300">
-                        {isRevealed ? mgr.pin : '••••'}
+                        {isRevealed ? mgr.pin : '••••••••'}
                       </span>
                     </div>
                     <button
@@ -494,6 +639,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     >
                       {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
+                  </div>
+
+                  <div className="pt-1 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Center jobs: <strong className="text-sky-300">{managerVehicles.length}</strong></span>
+                    <span className="text-purple-300 font-medium group-hover:underline">View jobs ➔</span>
                   </div>
                 </div>
               );

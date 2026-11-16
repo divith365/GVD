@@ -84,16 +84,57 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
             </div>
           </div>
 
-          {/* Quick Stats Counter */}
+          {/* Quick Stats Counter - Clickable Filter Cards */}
           <div className="flex items-center gap-3">
-            <div className="bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800 text-center">
-              <span className="text-xs text-sky-400 font-medium block">Active (Checked In)</span>
-              <span className="text-2xl font-black text-white">{checkedInCount}</span>
-            </div>
-            <div className="bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800 text-center">
-              <span className="text-xs text-emerald-400 font-medium block">Completed</span>
-              <span className="text-2xl font-black text-white">{checkedOutCount}</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterStatus(filterStatus === 'checked_in' ? 'all' : 'checked_in');
+                document.getElementById('vehicles-queue-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`px-4 py-2.5 rounded-2xl border transition text-left cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                filterStatus === 'checked_in'
+                  ? 'bg-sky-500/25 border-sky-500/60 shadow-lg shadow-sky-500/15 ring-1 ring-sky-400'
+                  : 'bg-slate-950/80 border-slate-800 hover:border-sky-500/40 hover:bg-slate-900'
+              }`}
+              title="Click to filter In-Service vehicles"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-sky-400 font-medium block">In Service (Active)</span>
+                <Clock className="w-3.5 h-3.5 text-sky-400" />
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-black text-white">{checkedInCount}</span>
+                <span className="text-[10px] text-sky-300 font-medium">
+                  {filterStatus === 'checked_in' ? '● Filtered' : 'Filter active ➔'}
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFilterStatus(filterStatus === 'checked_out' ? 'all' : 'checked_out');
+                document.getElementById('vehicles-queue-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`px-4 py-2.5 rounded-2xl border transition text-left cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                filterStatus === 'checked_out'
+                  ? 'bg-emerald-500/25 border-emerald-500/60 shadow-lg shadow-emerald-500/15 ring-1 ring-emerald-400'
+                  : 'bg-slate-950/80 border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900'
+              }`}
+              title="Click to filter Completed vehicles"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-emerald-400 font-medium block">Completed Checkout</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-black text-white">{checkedOutCount}</span>
+                <span className="text-[10px] text-emerald-300 font-medium">
+                  {filterStatus === 'checked_out' ? '● Filtered' : 'Filter done ➔'}
+                </span>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -122,7 +163,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
       </div>
 
       {/* Vehicles Queue & Management */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+      <div id="vehicles-queue-section" className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
         
         {/* Filter & Search Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -139,23 +180,25 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
             </button>
             <button
               onClick={() => setFilterStatus('checked_in')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
                 filterStatus === 'checked_in'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-sky-300'
               }`}
             >
-              In Service ({checkedInCount})
+              <Clock className="w-3.5 h-3.5" />
+              <span>In Service ({checkedInCount})</span>
             </button>
             <button
               onClick={() => setFilterStatus('checked_out')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
                 filterStatus === 'checked_out'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-emerald-300'
               }`}
             >
-              Completed ({checkedOutCount})
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Completed ({checkedOutCount})</span>
             </button>
           </div>
 
@@ -188,13 +231,15 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
               return (
                 <div
                   key={vehicle.id}
-                  className="bg-slate-950/70 hover:bg-slate-950 border border-slate-800/90 hover:border-slate-700 rounded-2xl p-4 transition flex flex-col justify-between space-y-3 group"
+                  onClick={() => isCompleted ? onViewComparison(vehicle) : onStartCheckout(vehicle)}
+                  className="bg-slate-950/70 hover:bg-slate-950 border border-slate-800/90 hover:border-brand-500/60 rounded-2xl p-4 transition flex flex-col justify-between space-y-3 group cursor-pointer hover:scale-[1.01] active:scale-[0.99] shadow-md"
+                  title={isCompleted ? "Click to view Before/After comparison" : "Click to perform checkout or view photos"}
                 >
                   {/* Top row */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20">
+                        <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 group-hover:border-amber-400/50 transition">
                           {vehicle.vehicleNumber}
                         </span>
                         <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
@@ -243,7 +288,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                   <div className="pt-2 border-t border-slate-800/80 flex items-center justify-end gap-2">
                     {/* Before/After Comparison Button */}
                     <button
-                      onClick={() => onViewComparison(vehicle)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewComparison(vehicle);
+                      }}
                       className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700"
                     >
                       <SplitSquareVertical className="w-3.5 h-3.5 text-sky-400" />
@@ -253,7 +302,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                     {/* Check out button if not completed */}
                     {!isCompleted && (
                       <button
-                        onClick={() => onStartCheckout(vehicle)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStartCheckout(vehicle);
+                        }}
                         className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow shadow-emerald-600/20 active:scale-95"
                       >
                         <CheckSquare className="w-3.5 h-3.5" />
