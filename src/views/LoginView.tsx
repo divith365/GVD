@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { KeyRound, Shield, Sparkles, Car, Bike, AlertCircle, Loader2 } from 'lucide-react';
+import { KeyRound, Shield, Sparkles, Car, Bike, AlertCircle, Loader2, Download } from 'lucide-react';
 import { appStore, SessionUser } from '../services/store';
 
 interface LoginViewProps {
@@ -80,6 +80,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           <p className="text-[11px] text-slate-400 mt-0.5">
             {isAdminMode ? 'Enter 8-Digit Master Admin Security PIN' : 'Enter 8-Digit Manager PIN to Auto-Login'}
           </p>
+
+          {/* Quick Install Link/Button */}
+          <div className="mt-2.5">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-gvd-install'))}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 text-[11px] font-semibold transition active:scale-95 shadow-sm"
+            >
+              <Download className="w-3 h-3 text-amber-400" />
+              <span>Click to Install App on Mobile</span>
+            </button>
+          </div>
         </div>
 
         {/* PIN Entry Area */}

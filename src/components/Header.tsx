@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Bike, ShieldCheck, User, LogOut, RotateCcw } from 'lucide-react';
+import { Car, Bike, ShieldCheck, User, LogOut, RotateCcw, Download } from 'lucide-react';
 import { SessionUser, appStore } from '../services/store';
 
 interface HeaderProps {
@@ -101,6 +101,16 @@ export const Header: React.FC<HeaderProps> = ({ session, onLogout, onSwitchSessi
               );
             })}
           </div>
+
+          {/* Install App Button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-gvd-install'))}
+            title="Install GVD Auto App on Phone"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold shadow-sm transition active:scale-95"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline sm:inline">Install</span>
+          </button>
 
           {/* Reset Demo Data Button */}
           <button
