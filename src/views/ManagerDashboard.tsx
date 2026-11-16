@@ -42,10 +42,10 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   const checkedOutCount = centerVehicles.filter(v => v.status === 'checked_out').length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-16">
+    <div className="max-w-6xl mx-auto space-y-6 pb-16 w-full max-w-full overflow-x-hidden">
       
       {/* Service Center Banner Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-7 shadow-xl w-full max-w-full overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`p-4 rounded-2xl border shadow-lg ${
@@ -85,28 +85,28 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
           </div>
 
           {/* Quick Stats Counter - Clickable Filter Cards */}
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
                 setFilterStatus(filterStatus === 'checked_in' ? 'all' : 'checked_in');
                 document.getElementById('vehicles-queue-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`px-4 py-2.5 rounded-2xl border transition text-left cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              className={`px-3 sm:px-4 py-2.5 rounded-2xl border transition text-left cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                 filterStatus === 'checked_in'
                   ? 'bg-sky-500/25 border-sky-500/60 shadow-lg shadow-sky-500/15 ring-1 ring-sky-400'
                   : 'bg-slate-950/80 border-slate-800 hover:border-sky-500/40 hover:bg-slate-900'
               }`}
               title="Click to filter In-Service vehicles"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-sky-400 font-medium block">In Service (Active)</span>
-                <Clock className="w-3.5 h-3.5 text-sky-400" />
+              <div className="flex items-center justify-between gap-1.5 sm:gap-3">
+                <span className="text-[11px] sm:text-xs text-sky-400 font-medium block truncate">In Service</span>
+                <Clock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               </div>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-black text-white">{checkedInCount}</span>
-                <span className="text-[10px] text-sky-300 font-medium">
-                  {filterStatus === 'checked_in' ? '● Filtered' : 'Filter active ➔'}
+              <div className="flex items-baseline gap-1.5 mt-1">
+                <span className="text-xl sm:text-2xl font-black text-white">{checkedInCount}</span>
+                <span className="text-[10px] text-sky-300 font-medium truncate">
+                  {filterStatus === 'checked_in' ? '● Filtered' : 'Filter ➔'}
                 </span>
               </div>
             </button>
@@ -117,21 +117,21 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                 setFilterStatus(filterStatus === 'checked_out' ? 'all' : 'checked_out');
                 document.getElementById('vehicles-queue-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`px-4 py-2.5 rounded-2xl border transition text-left cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              className={`px-3 sm:px-4 py-2.5 rounded-2xl border transition text-left cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                 filterStatus === 'checked_out'
                   ? 'bg-emerald-500/25 border-emerald-500/60 shadow-lg shadow-emerald-500/15 ring-1 ring-emerald-400'
                   : 'bg-slate-950/80 border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900'
               }`}
               title="Click to filter Completed vehicles"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-emerald-400 font-medium block">Completed Checkout</span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="flex items-center justify-between gap-1.5 sm:gap-3">
+                <span className="text-[11px] sm:text-xs text-emerald-400 font-medium block truncate">Completed</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               </div>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-black text-white">{checkedOutCount}</span>
-                <span className="text-[10px] text-emerald-300 font-medium">
-                  {filterStatus === 'checked_out' ? '● Filtered' : 'Filter done ➔'}
+              <div className="flex items-baseline gap-1.5 mt-1">
+                <span className="text-xl sm:text-2xl font-black text-white">{checkedOutCount}</span>
+                <span className="text-[10px] text-emerald-300 font-medium truncate">
+                  {filterStatus === 'checked_out' ? '● Filtered' : 'Filter ➔'}
                 </span>
               </div>
             </button>
@@ -167,10 +167,10 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
         
         {/* Filter & Search Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700 text-xs">
+          <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700 text-xs overflow-x-auto max-w-full scrollbar-thin">
             <button
               onClick={() => setFilterStatus('all')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap shrink-0 ${
                 filterStatus === 'all'
                   ? 'bg-brand-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
@@ -180,7 +180,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
             </button>
             <button
               onClick={() => setFilterStatus('checked_in')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 filterStatus === 'checked_in'
                   ? 'bg-sky-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-sky-300'
@@ -191,7 +191,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
             </button>
             <button
               onClick={() => setFilterStatus('checked_out')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 filterStatus === 'checked_out'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-emerald-300'

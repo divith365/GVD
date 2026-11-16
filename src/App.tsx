@@ -68,7 +68,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans w-full max-w-full overflow-x-hidden">
       <InstallPrompt />
       <Header
         session={session}
@@ -79,7 +79,7 @@ export const App: React.FC = () => {
         }}
       />
 
-      <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
         {!session ? (
           <LoginView onLoginSuccess={(u) => setSession(u)} />
         ) : session.role === 'admin' ? (

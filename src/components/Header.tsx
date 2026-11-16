@@ -20,25 +20,25 @@ export const Header: React.FC<HeaderProps> = ({ session, onLogout, onSwitchSessi
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white shadow-lg w-full max-w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 min-w-0">
         {/* Logo and Brand */}
-        <div className="flex items-center gap-3">
-          <div className="h-10 flex items-center justify-center">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <div className="h-10 flex items-center justify-center shrink-0">
             <img
               src="/logo.webp"
               alt="GVD Auto World"
-              className="h-9 w-auto object-contain drop-shadow"
+              className="h-8 sm:h-9 w-auto object-contain drop-shadow"
             />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-base sm:text-lg tracking-tight text-white">
+              <h1 className="font-bold text-sm sm:text-lg tracking-tight text-white truncate">
                 GVD Auto World
               </h1>
             </div>
             {session && (
-              <p className="text-xs text-slate-400 flex items-center gap-1.5 truncate">
+              <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 truncate">
                 {session.role === 'admin' ? (
                   <span className="flex items-center gap-1 text-emerald-400 font-medium">
                     <ShieldCheck className="w-3.5 h-3.5" /> Admin Portal

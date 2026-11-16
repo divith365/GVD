@@ -80,9 +80,9 @@ export const BikeCheckinFlow: React.FC<BikeCheckinFlowProps> = ({ session, onBac
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-16">
+    <div className="max-w-4xl mx-auto pb-16 w-full max-w-full overflow-x-hidden">
       {/* Top Bar */}
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition"

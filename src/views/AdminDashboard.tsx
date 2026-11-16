@@ -112,10 +112,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20">
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 w-full max-w-full overflow-x-hidden">
       
       {/* Top Banner & Center Selector Dropdown */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-7 shadow-xl w-full max-w-full overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -132,13 +132,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           {/* Service Center Filter Dropdown */}
-          <div className="flex items-center gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
-            <Filter className="w-4 h-4 text-brand-400 ml-1" />
-            <label className="text-xs font-semibold text-slate-400">Service Center:</label>
+          <div className="flex items-center gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800 w-full sm:w-auto max-w-full">
+            <Filter className="w-4 h-4 text-brand-400 ml-1 shrink-0" />
+            <label className="text-xs font-semibold text-slate-400 shrink-0">Center:</label>
             <select
               value={selectedCenterId}
               onChange={(e) => setSelectedCenterId(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-xs font-bold text-white rounded-xl px-3 py-1.5 focus:outline-none focus:border-brand-500 cursor-pointer"
+              className="bg-slate-900 border border-slate-700 text-xs font-bold text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-500 cursor-pointer w-full sm:w-auto max-w-full truncate min-w-0"
             >
               <option value="all">All Service Centers ({centers.length})</option>
               <optgroup label="Car Service Centers">
@@ -157,22 +157,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Selected Center Details if specific center selected */}
         {selectedCenter && (
-          <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-3">
-            <div className="flex items-center gap-4">
-              <span className="font-bold text-white text-sm flex items-center gap-1.5">
+          <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2 sm:gap-3 max-w-full min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 max-w-full min-w-0">
+              <span className="font-bold text-white text-sm flex items-center gap-1.5 shrink-0">
                 {selectedCenter.type === 'car' ? <Car className="w-4 h-4 text-blue-400" /> : <Bike className="w-4 h-4 text-emerald-400" />}
                 {selectedCenter.name}
               </span>
-              <span className="flex items-center gap-1 text-slate-400">
-                <MapPin className="w-3.5 h-3.5 text-slate-500" /> {selectedCenter.address || selectedCenter.location}
+              <span className="flex items-center gap-1 text-slate-400 truncate">
+                <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" /> <span className="truncate">{selectedCenter.address || selectedCenter.location}</span>
               </span>
               {selectedCenter.contact && (
-                <span className="flex items-center gap-1 text-slate-400">
+                <span className="flex items-center gap-1 text-slate-400 shrink-0">
                   <Phone className="w-3.5 h-3.5 text-slate-500" /> {selectedCenter.contact}
                 </span>
               )}
             </div>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/20 font-semibold uppercase">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/20 font-semibold uppercase shrink-0">
               {selectedCenter.type} Service Center
             </span>
           </div>
@@ -289,53 +289,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Main Tabs Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 w-full max-w-full">
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs overflow-x-auto max-w-full scrollbar-thin">
           <button
             onClick={() => setActiveTab('vehicles')}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition ${
+            className={`px-3.5 sm:px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 sm:gap-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'vehicles'
                 ? 'bg-brand-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <SplitSquareVertical className="w-4 h-4 text-sky-300" />
+            <SplitSquareVertical className="w-4 h-4 text-sky-300 shrink-0" />
             <span>Vehicles & Inspections ({filteredVehicles.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('centers')}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition ${
+            className={`px-3.5 sm:px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 sm:gap-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'centers'
                 ? 'bg-brand-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Building2 className="w-4 h-4 text-amber-300" />
+            <Building2 className="w-4 h-4 text-amber-300 shrink-0" />
             <span>Service Centers ({centers.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('managers')}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition ${
+            className={`px-3.5 sm:px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 sm:gap-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'managers'
                 ? 'bg-brand-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Users className="w-4 h-4 text-purple-300" />
+            <Users className="w-4 h-4 text-purple-300 shrink-0" />
             <span>Managers & PINs ({managers.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('cloudflare')}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition ${
+            className={`px-3.5 sm:px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 sm:gap-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'cloudflare'
                 ? 'bg-brand-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Cloud className="w-4 h-4 text-orange-400" />
+            <Cloud className="w-4 h-4 text-orange-400 shrink-0" />
             <span>Cloudflare D1 & R2</span>
           </button>
         </div>
@@ -406,8 +406,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             {/* Actions: Search bar & Excel Export Button */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-64">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
+              <div className="relative flex-1 min-w-[170px] sm:w-64">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -427,10 +427,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     statusFilter: statusFilter === 'all' ? 'All Statuses' : (statusFilter === 'checked_in' ? 'In Service' : 'Completed')
                   });
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition whitespace-nowrap shrink-0"
                 title="Export complete vehicle records (Check-in, Check-out, duration, photos) to Excel (.xlsx)"
               >
-                <FileSpreadsheet className="w-4 h-4" />
+                <FileSpreadsheet className="w-4 h-4 shrink-0" />
                 <span>Export Excel</span>
               </button>
             </div>
@@ -775,7 +775,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <p className="text-xs text-slate-400">
                 Full-resolution inspection photo storage active with zero egress fees and edge streaming via /api/photos.
               </p>
-              <div className="font-mono text-[11px] bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 space-y-1">
+              <div className="font-mono text-[11px] bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 space-y-1 break-all">
                 <div>Bucket Name: <span className="text-orange-400 font-bold">gvd-inspection-photos</span></div>
                 <div>Storage Binding: <span className="text-emerald-400 font-bold">PHOTOS_BUCKET (Connected)</span></div>
                 <div>Public Stream: <span className="text-slate-400">/api/photos/inspections/...</span></div>
@@ -795,7 +795,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <p className="text-xs text-slate-400">
                 Serverless SQL database storing service centers, managers with PINs, vehicle job cards, and photo metadata.
               </p>
-              <div className="font-mono text-[11px] bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 space-y-1">
+              <div className="font-mono text-[11px] bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 space-y-1 break-all">
                 <div>Database Name: <span className="text-cyan-400 font-bold">gvd_autocare_db</span></div>
                 <div>Database ID: <span className="text-slate-400">9a193cb4-fac9-44a9-b81a-a257cbd0f8c0</span></div>
                 <div>Binding: <span className="text-emerald-400 font-bold">DB (Connected)</span></div>
