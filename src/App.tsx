@@ -9,6 +9,7 @@ import { CarCheckinFlow } from './views/CarCheckinFlow';
 import { BikeCheckinFlow } from './views/BikeCheckinFlow';
 import { CheckoutFlow } from './views/CheckoutFlow';
 import { ComparisonViewer } from './components/ComparisonViewer';
+import { InstallPrompt } from './components/InstallPrompt';
 
 export const App: React.FC = () => {
   // Session: defaults to pre-authenticated Rahul Sharma (Car Manager) for instant first-look demo,
@@ -68,6 +69,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <InstallPrompt />
       <Header
         session={session}
         onLogout={handleLogout}
