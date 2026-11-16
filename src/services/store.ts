@@ -24,6 +24,7 @@ class AppStore {
 
   constructor() {
     this.init();
+    this.syncWithCloudflareD1();
   }
 
   private init() {
@@ -38,6 +39,46 @@ class AppStore {
     if (!storedCenters) this.saveCenters();
     if (!storedManagers) this.saveManagers();
     if (!storedVehicles) this.saveVehicles();
+  }
+
+  /**
+   * Syncs live records from Cloudflare D1 SQL database
+   */
+  async syncWithCloudflareD1() {
+    try {
+      const [centersRes, managersRes, vehiclesRes] = await Promise.allSettled([
+        fetch('/api/centers'),
+        fetch('/api/managers'),
+        fetch('/api/vehicles')
+      ]);
+
+      if (centersRes.status === 'fulfilled' && centersRes.value.ok) {
+        const d1Centers = await centersRes.value.json();
+        if (Array.isArray(d1Centers) && d1Centers.length > 0) {
+          this.centers = d1Centers;
+          this.saveCenters();
+        }
+      }
+
+      if (managersRes.status === 'fulfilled' && managersRes.value.ok) {
+        const d1Managers = await managersRes.value.json();
+        if (Array.isArray(d1Managers) && d1Managers.length > 0) {
+          this.managers = d1Managers;
+          this.saveManagers();
+        }
+      }
+
+      if (vehiclesRes.status === 'fulfilled' && vehiclesRes.value.ok) {
+        const d1Vehicles = await vehiclesRes.value.json();
+        if (Array.isArray(d1Vehicles) && d1Vehicles.length > 0) {
+          this.vehicles = d1Vehicles;
+          this.saveVehicles();
+        }
+      }
+    } catch (e) {
+      // Running offline or in local preview without api
+      console.log('Using local offline cache for state');
+    }
   }
 
   private saveCenters() {
@@ -83,6 +124,14 @@ class AppStore {
     };
     this.centers.unshift(newCenter);
     this.saveCenters();
+
+    // Sync to Cloudflare D1 asynchronously
+    fetch('/api/centers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch(err => console.log('D1 center sync error', err));
+
     return newCenter;
   }
 
@@ -109,6 +158,14 @@ class AppStore {
     };
     this.managers.unshift(newMgr);
     this.saveManagers();
+
+    // Sync to Cloudflare D1
+    fetch('/api/managers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch(err => console.log('D1 manager sync error', err));
+
     return newMgr;
   }
 
@@ -167,6 +224,14 @@ class AppStore {
     };
     this.vehicles.unshift(newRecord);
     this.saveVehicles();
+
+    // Sync to Cloudflare D1
+    fetch('/api/vehicles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    }).catch(err => console.log('D1 vehicle checkin sync error', err));
+
     return newRecord;
   }
 
@@ -184,6 +249,14 @@ class AppStore {
 
     this.vehicles = this.vehicles.map(v => v.id === id ? updated : v);
     this.saveVehicles();
+
+    // Sync to Cloudflare D1
+    fetch('/api/vehicles', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, checkoutPhotos, notes })
+    }).catch(err => console.log('D1 vehicle checkout sync error', err));
+
     return updated;
   }
 
