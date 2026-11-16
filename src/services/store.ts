@@ -2,10 +2,10 @@ import { ServiceCenter, Manager, VehicleRecord, ServiceCenterType, BikeServiceTy
 import { INITIAL_SERVICE_CENTERS, INITIAL_MANAGERS, INITIAL_VEHICLES } from './mockData';
 
 const STORAGE_KEYS = {
-  CENTERS: 'gvd_service_centers_v1',
-  MANAGERS: 'gvd_managers_v1',
-  VEHICLES: 'gvd_vehicles_v1',
-  ACTIVE_SESSION: 'gvd_session_v1'
+  CENTERS: 'gvd_service_centers_v2',
+  MANAGERS: 'gvd_managers_v2',
+  VEHICLES: 'gvd_vehicles_v2',
+  ACTIVE_SESSION: 'gvd_session_v2'
 };
 
 export interface SessionUser {
@@ -28,6 +28,16 @@ class AppStore {
   }
 
   private init() {
+    // Purge legacy demo data cache from v1
+    try {
+      localStorage.removeItem('gvd_service_centers_v1');
+      localStorage.removeItem('gvd_managers_v1');
+      localStorage.removeItem('gvd_vehicles_v1');
+      localStorage.removeItem('gvd_session_v1');
+    } catch (e) {
+      // ignore
+    }
+
     const storedCenters = localStorage.getItem(STORAGE_KEYS.CENTERS);
     const storedManagers = localStorage.getItem(STORAGE_KEYS.MANAGERS);
     const storedVehicles = localStorage.getItem(STORAGE_KEYS.VEHICLES);
@@ -54,7 +64,7 @@ class AppStore {
 
       if (centersRes.status === 'fulfilled' && centersRes.value.ok) {
         const d1Centers = await centersRes.value.json();
-        if (Array.isArray(d1Centers) && d1Centers.length > 0) {
+        if (Array.isArray(d1Centers)) {
           this.centers = d1Centers;
           this.saveCenters();
         }
@@ -62,7 +72,7 @@ class AppStore {
 
       if (managersRes.status === 'fulfilled' && managersRes.value.ok) {
         const d1Managers = await managersRes.value.json();
-        if (Array.isArray(d1Managers) && d1Managers.length > 0) {
+        if (Array.isArray(d1Managers)) {
           this.managers = d1Managers;
           this.saveManagers();
         }
@@ -70,7 +80,7 @@ class AppStore {
 
       if (vehiclesRes.status === 'fulfilled' && vehiclesRes.value.ok) {
         const d1Vehicles = await vehiclesRes.value.json();
-        if (Array.isArray(d1Vehicles) && d1Vehicles.length > 0) {
+        if (Array.isArray(d1Vehicles)) {
           this.vehicles = d1Vehicles;
           this.saveVehicles();
         }
@@ -348,15 +358,6 @@ class AppStore {
       return true;
     }
     return false;
-  }
-
-  resetToDefaults() {
-    this.centers = [...INITIAL_SERVICE_CENTERS];
-    this.managers = [...INITIAL_MANAGERS];
-    this.vehicles = [...INITIAL_VEHICLES];
-    this.saveCenters();
-    this.saveManagers();
-    this.saveVehicles();
   }
 }
 

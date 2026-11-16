@@ -12,21 +12,8 @@ import { ComparisonViewer } from './components/ComparisonViewer';
 import { InstallPrompt } from './components/InstallPrompt';
 
 export const App: React.FC = () => {
-  // Session: defaults to pre-authenticated Rahul Sharma (Car Manager) for instant first-look demo,
-  // or user can switch in 1-click to Admin or Bike Manager.
-  const [session, setSession] = useState<SessionUser | null>(() => {
-    const centers = appStore.getServiceCenters();
-    const managers = appStore.getManagers();
-    const defaultMgr = managers[0];
-    const defaultCenter = centers.find(c => c.id === defaultMgr.serviceCenterId);
-    return {
-      role: 'manager',
-      name: defaultMgr.name,
-      managerId: defaultMgr.id,
-      serviceCenterId: defaultMgr.serviceCenterId,
-      serviceCenter: defaultCenter
-    };
-  });
+  // Start on clean login screen
+  const [session, setSession] = useState<SessionUser | null>(null);
 
   const [vehicles, setVehicles] = useState<VehicleRecord[]>(() => appStore.getVehicles());
   const [currentFlow, setCurrentFlow] = useState<'dashboard' | 'car_checkin' | 'bike_checkin' | 'checkout'>('dashboard');
@@ -73,10 +60,6 @@ export const App: React.FC = () => {
       <Header
         session={session}
         onLogout={handleLogout}
-        onSwitchSession={(newSession) => {
-          setSession(newSession);
-          setCurrentFlow('dashboard');
-        }}
       />
 
       <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { KeyRound, Shield, Sparkles, Car, Bike, AlertCircle, Loader2, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, AlertCircle, Loader2, Download } from 'lucide-react';
 import { appStore, SessionUser } from '../services/store';
 
 interface LoginViewProps {
@@ -10,10 +10,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [pin, setPin] = useState<string>('');
   const [pinError, setPinError] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
-  const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
-
-  const centers = appStore.getServiceCenters();
-  const managers = appStore.getManagers();
 
   const handleKeypadPress = (digit: string) => {
     if (pin.length < 8 && !isVerifying) {
@@ -78,7 +74,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             Service Inspection & Detailing Portal
           </h2>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            {isAdminMode ? 'Enter 8-Digit Master Admin Security PIN' : 'Enter 8-Digit Manager PIN to Auto-Login'}
+            Enter 8-Digit Manager or Admin Security PIN
           </p>
 
           {/* Quick Install Link/Button */}
@@ -176,43 +172,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </button>
           </div>
 
-          {/* Quick Demo Fill Buttons (Managers) */}
-          <div className="pt-3 border-t border-slate-800/80">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-400" /> Quick Demo Login (8-Digit PINs):
-              </span>
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {managers.slice(0, 4).map((mgr) => {
-                const c = centers.find(center => center.id === mgr.serviceCenterId);
-                return (
-                  <button
-                    key={mgr.id}
-                    type="button"
-                    onClick={() => handleQuickFill(mgr.pin)}
-                    className="text-left p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-amber-500/40 transition group"
-                  >
-                    <div className="flex items-center gap-1.5 font-semibold text-xs text-white group-hover:text-amber-300">
-                      {c?.type === 'car' ? (
-                        <Car className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                      ) : (
-                        <Bike className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      )}
-                      <span className="truncate">{mgr.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-0.5 text-[10px] text-slate-400 font-mono">
-                      <span>PIN: <strong className="text-amber-400">{mgr.pin}</strong></span>
-                      <span className="uppercase text-[9px] px-1 rounded bg-slate-700 text-slate-300">{c?.type}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Small, Discreet Admin Login at Bottom */}
-          <div className="pt-2 text-center border-t border-slate-800/60">
+          {/* Quick Admin Access Button with PIN 88888888 */}
+          <div className="pt-3 text-center border-t border-slate-800/60">
             <button
               type="button"
               onClick={() => handleQuickFill('88888888')}
