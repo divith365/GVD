@@ -23,22 +23,33 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
 
     // Extract base64 payload
     const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    const contentType = matches ? matches[1] : 'image/jpeg';
+    const contentType = matches ? matches[1] : 'image/webp';
     const buffer = Uint8Array.from(atob(matches ? matches[2] : base64Data), c => c.charCodeAt(0));
 
-    const cleanVNum = (vehicleNumber || 'VEHICLE').replace(/[^a-zA-Z0-9]/g, '_');
-    const objectKey = `inspections/${cleanVNum}/${stage}/${slotKey}_${Date.now()}.jpg`;
+    // Determine extension based on content type (WebP preferred)
+    let extension = 'webp';
+    if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+      extension = 'jpg';
+    } else if (contentType.includes('png')) {
+      extension = 'png';
+    }
 
-    // Save to Cloudflare R2 Bucket
+    const cleanVNum = (vehicleNumber || 'VEHICLE').replace(/[^a-zA-Z0-9]/g, '_');
+    const objectKey = `inspections/${cleanVNum}/${stage}/${slotKey}_${Date.now()}.${extension}`;
+
+    // Save to Cloudflare R2 Bucket with metadata
     await context.env.PHOTOS_BUCKET.put(objectKey, buffer, {
       httpMetadata: {
         contentType: contentType,
+        cacheControl: 'public, max-age=31536000, immutable'
       },
       customMetadata: {
         vehicleNumber: cleanVNum,
         stage: stage,
         slotKey: slotKey,
-        vehicleType: vehicleType || 'car'
+        vehicleType: vehicleType || 'car',
+        compressedFormat: extension,
+        byteSize: String(buffer.byteLength)
       }
     });
 
@@ -51,7 +62,9 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     return new Response(JSON.stringify({
       success: true,
       r2Key: objectKey,
-      url: publicUrl
+      url: publicUrl,
+      format: extension,
+      bytes: buffer.byteLength
     }), {
       status: 200,
       headers: { "Content-Type": "application/json" }

@@ -2,7 +2,42 @@
  * Utility functions for camera capture, compression and preview
  */
 
-export async function fileToDataUrl(file: File, maxWidth = 1280, maxHeight = 960, quality = 0.8): Promise<string> {
+export function canvasToWebP(canvas: HTMLCanvasElement, quality = 0.82): string {
+  try {
+    const webpUrl = canvas.toDataURL('image/webp', quality);
+    if (webpUrl.startsWith('data:image/webp')) {
+      return webpUrl;
+    }
+  } catch (e) {
+    // Browser does not support WebP canvas export, fallback
+  }
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+export function getImageSizeInfo(dataUrl: string): { format: string; sizeKb: number; sizeText: string } {
+  let format = 'WebP';
+  if (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')) {
+    format = 'JPEG';
+  } else if (dataUrl.startsWith('data:image/png')) {
+    format = 'PNG';
+  } else if (dataUrl.startsWith('data:image/webp')) {
+    format = 'WebP';
+  }
+
+  // Calculate base64 decoded byte size: (chars * 3/4)
+  const base64Index = dataUrl.indexOf(';base64,');
+  const base64Length = base64Index !== -1 ? dataUrl.length - (base64Index + 8) : dataUrl.length;
+  const bytes = Math.round(base64Length * 0.75);
+  const sizeKb = Math.round(bytes / 1024);
+
+  return {
+    format,
+    sizeKb,
+    sizeText: sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`
+  };
+}
+
+export async function fileToDataUrl(file: File, maxWidth = 1600, maxHeight = 1200, quality = 0.82): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -42,13 +77,14 @@ export async function fileToDataUrl(file: File, maxWidth = 1280, maxHeight = 960
           hour: '2-digit',
           minute: '2-digit'
         });
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
         ctx.fillRect(width - 240, height - 36, 230, 28);
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#ffffff';
         ctx.fillText(`GVD INSPECT • ${timestamp}`, width - 230, height - 18);
 
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        // Export compressed as WebP format for optimal storage savings
+        resolve(canvasToWebP(canvas, quality));
       };
       img.onerror = reject;
       img.src = e.target?.result as string;
@@ -130,5 +166,5 @@ export function generateSampleInspectionPhoto(
   ctx.textAlign = 'right';
   ctx.fillText(`GVD AUTOCARE • ${timestamp} • ${stage.toUpperCase()}`, 780, 585);
 
-  return canvas.toDataURL('image/jpeg', 0.85);
+  return canvasToWebP(canvas, 0.85);
 }

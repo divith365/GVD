@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Camera, Upload, Sparkles, Check, Trash2, Eye } from 'lucide-react';
 import { PhotoSlot } from '../types';
-import { fileToDataUrl, generateSampleInspectionPhoto } from '../utils/photoUtils';
+import { fileToDataUrl, generateSampleInspectionPhoto, getImageSizeInfo } from '../utils/photoUtils';
 
 interface PhotoCaptureSlotProps {
   slot: PhotoSlot;
@@ -40,6 +40,8 @@ export const PhotoCaptureSlot: React.FC<PhotoCaptureSlotProps> = ({
     const sample = generateSampleInspectionPhoto(slot.label, vehicleNumber, stage, vehicleType);
     onPhotoCaptured(slot.key, sample);
   };
+
+  const sizeInfo = photoUrl ? getImageSizeInfo(photoUrl) : null;
 
   return (
     <div className={`rounded-xl border transition-all duration-200 overflow-hidden flex flex-col ${
@@ -87,6 +89,15 @@ export const PhotoCaptureSlot: React.FC<PhotoCaptureSlotProps> = ({
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
+
+              {sizeInfo && (
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm text-[10px] font-mono text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span className="font-semibold">{sizeInfo.format}</span>
+                  <span className="text-slate-500">•</span>
+                  <span>{sizeInfo.sizeText}</span>
+                </div>
+              )}
             </div>
             <p className="text-[11px] text-slate-400 truncate">
               {slot.description}

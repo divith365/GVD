@@ -31,3 +31,6 @@ export const onRequestGet = async (context: { params: { path: string[] }; env: E
     return new Response(err.message, { status: 500 });
   }
 };
+
+export const onRequestHead = onRequestGet;
+
