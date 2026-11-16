@@ -3,11 +3,13 @@ import {
   Building2, Users, Car, Bike, Plus, Search, ShieldCheck, 
   MapPin, Phone, KeyRound, CheckCircle2, SplitSquareVertical, 
   Cloud, Database, ExternalLink, Eye, EyeOff, Sparkles, Filter, Clock,
-  FileSpreadsheet, Download, Calendar, Timer, UserCheck
+  FileSpreadsheet, Download, Calendar, Timer, UserCheck, Trash2, 
+  AlertCircle, CalendarRange, ArrowRight, X
 } from 'lucide-react';
 import { ServiceCenter, Manager, VehicleRecord, ServiceCenterType } from '../types';
 import { appStore, SessionUser } from '../services/store';
 import { exportVehiclesToExcel } from '../utils/exportUtils';
+import { VehicleDetailModal } from '../components/VehicleDetailModal';
 
 interface AdminDashboardProps {
   session: SessionUser;
@@ -25,6 +27,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'checked_in' | 'checked_out'>('all');
   
+  // Time period filter: 'all' | 'today' | 'week' | 'month' | 'range'
+  const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'range'>('all');
+
+  // Custom date range state (YYYY-MM-DD)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const sevenDaysAgoStr = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const [customStartDate, setCustomStartDate] = useState<string>(sevenDaysAgoStr);
+  const [customEndDate, setCustomEndDate] = useState<string>(todayStr);
+
+  // Deep detail modal state
+  const [selectedVehicleDetail, setSelectedVehicleDetail] = useState<VehicleRecord | null>(null);
+
+  // Quick delete confirmation state
+  const [vehicleToDelete, setVehicleToDelete] = useState<VehicleRecord | null>(null);
+  const [notificationMsg, setNotificationMsg] = useState<string>('');
+
   // Modals
   const [isAddCenterOpen, setIsAddCenterOpen] = useState(false);
   const [isAddManagerOpen, setIsAddManagerOpen] = useState(false);
@@ -47,9 +65,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const centers = appStore.getServiceCenters();
   const managers = appStore.getManagers();
 
-  // Filtered vehicles based on selected center dropdown and status filter
-  const filteredVehicles = vehicles.filter(v => {
-    if (selectedCenterId !== 'all' && v.serviceCenterId !== selectedCenterId) return false;
+  // 1. Filter by Time Period
+  const timeFilteredVehicles = vehicles.filter(v => {
+    if (!v.checkinTime) return true;
+    const checkinDate = new Date(v.checkinTime);
+    const now = new Date();
+
+    if (timeFilter === 'today') {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      return checkinDate >= startOfToday && checkinDate <= endOfToday;
+    }
+
+    if (timeFilter === 'week') {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return checkinDate >= sevenDaysAgo && checkinDate <= now;
+    }
+
+    if (timeFilter === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return checkinDate >= startOfMonth && checkinDate <= now;
+    }
+
+    if (timeFilter === 'range') {
+      if (!customStartDate && !customEndDate) return true;
+      const start = customStartDate ? new Date(customStartDate + 'T00:00:00') : new Date(0);
+      const end = customEndDate ? new Date(customEndDate + 'T23:59:59') : new Date();
+      return checkinDate >= start && checkinDate <= end;
+    }
+
+    return true; // 'all'
+  });
+
+  // 2. Filter by Service Center
+  const centerFilteredVehicles = timeFilteredVehicles.filter(v => {
+    return selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId;
+  });
+
+  // 3. Status and Search Filter for vehicle listing
+  const filteredVehicles = centerFilteredVehicles.filter(v => {
     if (statusFilter !== 'all' && v.status !== statusFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -61,6 +115,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
 
   const selectedCenter = centers.find(c => c.id === selectedCenterId);
+
+  // Key Metrics for Active Selection
+  const totalVehiclesCount = centerFilteredVehicles.length;
+  const inServiceCount = centerFilteredVehicles.filter(v => v.status === 'checked_in').length;
+  const completedVehicles = centerFilteredVehicles.filter(v => v.status === 'checked_out');
+  const completedCount = completedVehicles.length;
+  
+  // Distinct Centers represented in this selection
+  const distinctCenterIds = new Set(centerFilteredVehicles.map(v => v.serviceCenterId));
+  const activeCentersInPeriod = distinctCenterIds.size;
+
+  // Average Turnaround Duration
+  let avgDurationText = 'N/A';
+  if (completedVehicles.length > 0) {
+    let totalMins = 0;
+    let count = 0;
+    completedVehicles.forEach(v => {
+      if (v.checkinTime && v.checkoutTime) {
+        const diffMs = new Date(v.checkoutTime).getTime() - new Date(v.checkinTime).getTime();
+        totalMins += Math.max(0, Math.round(diffMs / 60000));
+        count++;
+      }
+    });
+    if (count > 0) {
+      const avgMins = Math.round(totalMins / count);
+      avgDurationText = avgMins < 60 ? `${avgMins}m` : `${Math.floor(avgMins / 60)}h ${avgMins % 60}m`;
+    }
+  }
+
+  const getTimeFilterLabel = () => {
+    if (timeFilter === 'today') return 'Today';
+    if (timeFilter === 'week') return 'This Week';
+    if (timeFilter === 'month') return 'This Month';
+    if (timeFilter === 'range') return `${customStartDate} to ${customEndDate}`;
+    return 'All Time';
+  };
+
+  const handleDeleteVehicle = (vehicleId: string) => {
+    const success = appStore.deleteVehicle(vehicleId);
+    if (success) {
+      setNotificationMsg('Vehicle entry deleted successfully.');
+      setTimeout(() => setNotificationMsg(''), 3500);
+      if (selectedVehicleDetail?.id === vehicleId) {
+        setSelectedVehicleDetail(null);
+      }
+    }
+  };
 
   const handleCreateCenter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,9 +279,85 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* Aggregate KPI Cards - All Clickable */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          {/* 1. Total Centers (Clickable -> Switches to Centers tab) */}
+        {/* Time Period Filter Bar (Today | Week | Month | Custom Range | All Time) */}
+        <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full scrollbar-thin pb-1">
+            <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-brand-400" /> Filter Period:
+            </span>
+            {[
+              { id: 'today', label: 'Today' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' },
+              { id: 'range', label: 'Custom Range 📅' },
+              { id: 'all', label: 'All Time' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setTimeFilter(tab.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${
+                  timeFilter === tab.id
+                    ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30 ring-1 ring-brand-400'
+                    : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800 hover:bg-slate-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Date Range Pickers (shown when range selected) */}
+          {timeFilter === 'range' && (
+            <div className="flex flex-wrap items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs animate-in fade-in">
+              <span className="text-slate-400 font-medium pl-1">From:</span>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+              />
+              <span className="text-slate-400 font-medium">To:</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Aggregate KPI Cards - 5 Responsive Cards (Filtered by Active Time & Center) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
+          {/* 1. Total Vehicles in Period */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('vehicles');
+              setStatusFilter('all');
+            }}
+            className={`text-left p-3.5 rounded-2xl border transition group cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+              statusFilter === 'all' && activeTab === 'vehicles'
+                ? 'bg-brand-500/15 border-brand-500/60 shadow-lg shadow-brand-500/10'
+                : 'bg-slate-950/70 border-slate-800 hover:border-brand-500/40 hover:bg-slate-900'
+            }`}
+            title="Click to view all vehicles for this period"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium group-hover:text-brand-300 transition">Total Vehicles</span>
+              <Car className="w-3.5 h-3.5 text-brand-400" />
+            </div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-white">{totalVehiclesCount}</span>
+              <span className="text-[10px] text-slate-500 truncate">({getTimeFilterLabel()})</span>
+            </div>
+            <span className="text-[10px] text-brand-400/80 font-medium mt-1 block">
+              Filter all ➔
+            </span>
+          </button>
+
+          {/* 2. Active Centers */}
           <button
             type="button"
             onClick={() => setActiveTab('centers')}
@@ -192,43 +369,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             title="Click to view and manage service centers"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium group-hover:text-amber-300 transition">Total Centers</span>
+              <span className="text-xs text-slate-400 font-medium group-hover:text-amber-300 transition">Active Centers</span>
               <Building2 className={`w-3.5 h-3.5 transition ${activeTab === 'centers' ? 'text-amber-400' : 'text-slate-500 group-hover:text-amber-400'}`} />
             </div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-white">{centers.length}</span>
-              <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">({centers.filter(c => c.type === 'car').length} Car / {centers.filter(c => c.type === 'bike').length} Bike)</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-white">{activeCentersInPeriod}</span>
+              <span className="text-[10px] text-slate-500">/ {centers.length} Total</span>
             </div>
-            <span className="text-[10px] text-amber-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-amber-300">
-              View centers ➔
+            <span className="text-[10px] text-amber-400/80 font-medium mt-1 block">
+              Manage centers ➔
             </span>
           </button>
 
-          {/* 2. Active Managers (Clickable -> Switches to Managers tab) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('managers')}
-            className={`text-left p-3.5 rounded-2xl border transition group cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-              activeTab === 'managers'
-                ? 'bg-purple-500/15 border-purple-500/60 shadow-lg shadow-purple-500/10'
-                : 'bg-slate-950/70 border-slate-800 hover:border-purple-500/40 hover:bg-slate-900'
-            }`}
-            title="Click to view managers and login PINs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium group-hover:text-purple-300 transition">Active Managers</span>
-              <Users className={`w-3.5 h-3.5 transition ${activeTab === 'managers' ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'}`} />
-            </div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-white">{managers.length}</span>
-              <span className="text-[10px] text-emerald-400 font-medium">PIN Enabled</span>
-            </div>
-            <span className="text-[10px] text-purple-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-purple-300">
-              View managers ➔
-            </span>
-          </button>
-
-          {/* 3. In Service Active (Clickable -> Filters Vehicles to checked_in) */}
+          {/* 3. In Service (Active) */}
           <button
             type="button"
             onClick={() => {
@@ -243,21 +396,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             title="Click to filter In-Service vehicles"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-sky-400 font-medium group-hover:text-sky-300 transition">In Service (Active)</span>
+              <span className="text-xs text-sky-400 font-medium group-hover:text-sky-300 transition">In Service</span>
               <Clock className={`w-3.5 h-3.5 transition ${activeTab === 'vehicles' && statusFilter === 'checked_in' ? 'text-sky-400' : 'text-sky-500'}`} />
             </div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-white">
-                {vehicles.filter(v => (selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId) && v.status === 'checked_in').length}
-              </span>
-              <span className="text-[10px] text-slate-500">Vehicles</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-white">{inServiceCount}</span>
+              <span className="text-[10px] text-slate-500">Active</span>
             </div>
-            <span className="text-[10px] text-sky-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-sky-300">
+            <span className="text-[10px] text-sky-400/80 font-medium mt-1 block">
               {statusFilter === 'checked_in' && activeTab === 'vehicles' ? '● Filtered Active' : 'Filter active ➔'}
             </span>
           </button>
 
-          {/* 4. Completed Checkouts (Clickable -> Filters Vehicles to checked_out) */}
+          {/* 4. Completed Checkouts */}
           <button
             type="button"
             onClick={() => {
@@ -269,24 +420,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 ? 'bg-emerald-500/20 border-emerald-500/60 shadow-lg shadow-emerald-500/15'
                 : 'bg-slate-950/70 border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900'
             }`}
-            title="Click to filter Completed vehicles for Before/After compare"
+            title="Click to filter Completed vehicles"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-emerald-400 font-medium group-hover:text-emerald-300 transition">Completed Checkouts</span>
+              <span className="text-xs text-emerald-400 font-medium group-hover:text-emerald-300 transition">Completed</span>
               <CheckCircle2 className={`w-3.5 h-3.5 transition ${activeTab === 'vehicles' && statusFilter === 'checked_out' ? 'text-emerald-400' : 'text-emerald-500'}`} />
             </div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-white">
-                {vehicles.filter(v => (selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId) && v.status === 'checked_out').length}
-              </span>
-              <span className="text-[10px] text-emerald-400">Ready to Compare</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-white">{completedCount}</span>
+              <span className="text-[10px] text-emerald-400">Ready</span>
             </div>
-            <span className="text-[10px] text-emerald-400/80 font-medium mt-1 flex items-center gap-1 group-hover:text-emerald-300">
-              {statusFilter === 'checked_out' && activeTab === 'vehicles' ? '● Filtered Completed' : 'Filter compare ➔'}
+            <span className="text-[10px] text-emerald-400/80 font-medium mt-1 block">
+              {statusFilter === 'checked_out' && activeTab === 'vehicles' ? '● Filtered Done' : 'Filter done ➔'}
             </span>
           </button>
+
+          {/* 5. Avg Turnaround Duration */}
+          <div className="p-3.5 rounded-2xl border bg-slate-950/70 border-slate-800 col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-amber-400 font-medium">Avg Turnaround</span>
+              <Timer className="w-3.5 h-3.5 text-amber-400" />
+            </div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-white">{avgDurationText}</span>
+              <span className="text-[10px] text-slate-500">Duration</span>
+            </div>
+            <span className="text-[10px] text-slate-400 mt-1 block truncate">
+              In & Out Time Average
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Toast Notification Banner */}
+      {notificationMsg && (
+        <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <span>{notificationMsg}</span>
+          <button type="button" onClick={() => setNotificationMsg('')} className="text-emerald-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Main Tabs Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 w-full max-w-full">
@@ -424,7 +598,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 onClick={() => {
                   exportVehiclesToExcel(filteredVehicles, centers, managers, {
                     centerName: selectedCenter?.name || 'All Service Centers',
-                    statusFilter: statusFilter === 'all' ? 'All Statuses' : (statusFilter === 'checked_in' ? 'In Service' : 'Completed')
+                    statusFilter: statusFilter === 'all' ? 'All Statuses' : (statusFilter === 'checked_in' ? 'In Service' : 'Completed'),
+                    timeFilterLabel: getTimeFilterLabel()
                   });
                 }}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition whitespace-nowrap shrink-0"
@@ -440,41 +615,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-500">
               <Car className="w-12 h-12 mx-auto mb-2 text-slate-600" />
               <p className="text-sm font-semibold text-slate-300">No vehicle records found for selected filter</p>
-              <p className="text-xs text-slate-500 mt-1">Try resetting status to "All Statuses" or switch service centers.</p>
+              <p className="text-xs text-slate-500 mt-1">Try switching the Period filter (e.g. "All Time") or resetting service center.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {filteredVehicles.map(v => {
                 const centerOfVehicle = centers.find(c => c.id === v.serviceCenterId);
                 const isCheckedOut = v.status === 'checked_out';
-                const checkinPhotosCount = Object.keys(v.checkinPhotos || {}).length;
-                const checkoutPhotosCount = Object.keys(v.checkoutPhotos || {}).length;
+                const totalPhotos = Object.keys(v.checkinPhotos || {}).length + Object.keys(v.checkoutPhotos || {}).length;
                 const checkinDate = v.checkinTime ? new Date(v.checkinTime) : null;
                 const checkoutDate = v.checkoutTime ? new Date(v.checkoutTime) : null;
 
                 // Turnaround Duration calculation
-                let durationText = 'In Progress';
+                let durationBadge = 'In Service';
                 if (checkinDate && checkoutDate) {
                   const diffMs = checkoutDate.getTime() - checkinDate.getTime();
                   const diffMins = Math.round(diffMs / 60000);
-                  durationText = diffMins < 60 ? `${diffMins} mins` : `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+                  durationBadge = diffMins < 60 ? `${diffMins}m` : `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
                 }
 
                 return (
                   <div
                     key={v.id}
-                    onClick={() => onViewComparison(v)}
-                    className="bg-slate-900 border border-slate-800 hover:border-brand-500/60 rounded-2xl p-4.5 transition flex flex-col justify-between space-y-3.5 group shadow-lg cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
-                    title="Click card to view photo inspection & comparison"
+                    onClick={() => setSelectedVehicleDetail(v)}
+                    className="bg-slate-900 border border-slate-800 hover:border-brand-500/60 rounded-2xl p-4 transition flex flex-col justify-between space-y-3 group shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden"
+                    title="Click to view deep details, photo inspection & records"
                   >
                     <div>
-                      {/* Top Header: Number Plate + Status */}
+                      {/* Top Row: Number Plate, Vehicle Type & Status Badge */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 group-hover:border-amber-400/50 transition">
                             {v.vehicleNumber}
                           </span>
-                          <span className="text-[10px] uppercase font-bold text-slate-400 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 flex items-center gap-1">
+                            {v.vehicleType === 'car' ? <Car className="w-3 h-3 text-blue-400" /> : <Bike className="w-3 h-3 text-emerald-400" />}
                             {v.vehicleType}
                           </span>
                         </div>
@@ -487,110 +662,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </span>
                       </div>
 
-                      {/* Service & Center */}
-                      <div className="mt-2.5 space-y-0.5">
-                        <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                          {v.vehicleType === 'car' ? <Car className="w-3.5 h-3.5 text-blue-400 shrink-0" /> : <Bike className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-                          <span className="truncate">{v.serviceType || 'Standard Inspection'}</span>
+                      {/* Middle: Service Type, Center & Customer */}
+                      <div className="mt-2.5 space-y-1">
+                        <p className="text-xs font-bold text-white truncate">
+                          {v.serviceType || 'Standard Inspection & Service'}
                         </p>
-                        <p className="text-[11px] text-slate-400 truncate">
-                          Center: <strong className="text-slate-300">{centerOfVehicle?.name}</strong>
+                        <p className="text-[11px] text-slate-400 truncate flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span className="truncate">{centerOfVehicle?.name} ({centerOfVehicle?.location})</span>
                         </p>
-                      </div>
-
-                      {/* Customer info & Quick Call */}
-                      {v.customerName && (
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1 pt-1 border-t border-slate-800/60">
-                          <span className="truncate">Client: <strong className="text-slate-300">{v.customerName}</strong></span>
-                          {v.customerPhone && (
-                            <a
-                              href={`tel:${v.customerPhone}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-amber-400 hover:text-amber-300 font-mono text-[10px] flex items-center gap-1 hover:underline ml-2 shrink-0"
-                            >
-                              <Phone className="w-3 h-3" />
-                              {v.customerPhone}
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Comprehensive Check-in / Check-out Timeline */}
-                    <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 space-y-2 text-[11px]">
-                      {/* Check-In Row */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-sky-400 font-medium">
-                          <Clock className="w-3.5 h-3.5 text-sky-400" />
-                          <span>Check-In:</span>
-                        </div>
-                        <div className="text-right text-slate-300 font-mono">
-                          {checkinDate ? (
-                            <span>
-                              {checkinDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {checkinDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          ) : '-'}
-                          {v.managerName && (
-                            <span className="block text-[10px] text-slate-400 font-sans">
-                              By {v.managerName}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Check-Out Row */}
-                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-850">
-                        <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Check-Out:</span>
-                        </div>
-                        <div className="text-right font-mono">
-                          {checkoutDate ? (
-                            <span className="text-slate-300">
-                              {checkoutDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {checkoutDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          ) : (
-                            <span className="text-sky-400 font-semibold text-[10px] font-sans">
-                              ● Ongoing Service
-                            </span>
-                          )}
-                          <span className="block text-[10px] text-amber-400/90 font-sans font-medium">
-                            ⏱️ Duration: {durationText}
-                          </span>
-                        </div>
+                        {v.customerName && (
+                          <p className="text-[11px] text-slate-400 truncate flex items-center gap-1">
+                            <Users className="w-3 h-3 text-slate-500 shrink-0" />
+                            <span className="text-slate-300 truncate">{v.customerName}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Inspection Photo Summary & Notes */}
-                    <div className="space-y-1.5">
-                      <div className="bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800 text-[10px] flex items-center justify-between">
-                        <span className="text-sky-300 font-semibold">
-                          📸 Check-in: <strong>{checkinPhotosCount}</strong> photos (WebP)
+                    {/* Bottom Row: Turnaround Duration, Photos Count & Actions */}
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>{durationBadge}</span>
                         </span>
-                        <span className={isCheckedOut ? 'text-emerald-300 font-semibold' : 'text-slate-500'}>
-                          📸 Check-out: <strong>{checkoutPhotosCount}</strong> photos (WebP)
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          📷 {totalPhotos}
                         </span>
                       </div>
 
-                      {v.notes && (
-                        <p className="text-[10px] text-slate-400 bg-slate-950/40 px-2 py-1 rounded border border-slate-800/60 truncate">
-                          📝 Notes: {v.notes}
-                        </p>
-                      )}
-                    </div>
+                      <div className="flex items-center gap-1.5">
+                        {/* Quick Delete Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVehicleToDelete(v);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
+                          title="Delete vehicle entry"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
 
-                    {/* Action button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewComparison(v);
-                      }}
-                      className="w-full py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow shadow-brand-500/20 active:scale-98"
-                    >
-                      <SplitSquareVertical className="w-3.5 h-3.5" />
-                      <span>{isCheckedOut ? 'Side-by-Side Before/After Compare' : 'Inspect Check-in Photos'}</span>
-                    </button>
+                        <span className="text-[11px] text-brand-400 font-bold group-hover:text-brand-300 flex items-center gap-0.5 pl-1">
+                          Details ➔
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -1002,6 +1122,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Deep Detail Modal when vehicle selected */}
+      {selectedVehicleDetail && (
+        <VehicleDetailModal
+          vehicle={selectedVehicleDetail}
+          center={centers.find(c => c.id === selectedVehicleDetail.serviceCenterId)}
+          onClose={() => setSelectedVehicleDetail(null)}
+          onDelete={(id) => handleDeleteVehicle(id)}
+          onOpenComparison={(v) => {
+            setSelectedVehicleDetail(null);
+            onViewComparison(v);
+          }}
+        />
+      )}
+
+      {/* Quick Delete Confirmation Modal */}
+      {vehicleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-2.5 rounded-2xl bg-red-500/20 border border-red-500/30">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Delete Vehicle Record?</h3>
+                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800">
+              Permanently remove <strong>{vehicleToDelete.vehicleNumber}</strong> ({vehicleToDelete.serviceType || 'Inspection'}) and all associated photos.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setVehicleToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteVehicle(vehicleToDelete.id);
+                  setVehicleToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md shadow-red-600/30"
+              >
+                Yes, Delete Entry
+              </button>
+            </div>
           </div>
         </div>
       )}

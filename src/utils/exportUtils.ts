@@ -4,6 +4,7 @@ import { VehicleRecord, ServiceCenter, Manager } from '../types';
 export interface ExportFilterOptions {
   centerName?: string;
   statusFilter?: string;
+  timeFilterLabel?: string;
 }
 
 export function exportVehiclesToExcel(
@@ -21,14 +22,15 @@ export function exportVehiclesToExcel(
 
     // Calculate duration in minutes / hours
     let durationText = 'In Service (In Progress)';
+    let durationMins = 0;
     if (checkinDate && checkoutDate) {
       const diffMs = checkoutDate.getTime() - checkinDate.getTime();
-      const diffMins = Math.round(diffMs / (1000 * 60));
-      if (diffMins < 60) {
-        durationText = `${diffMins} mins`;
+      durationMins = Math.round(diffMs / (1000 * 60));
+      if (durationMins < 60) {
+        durationText = `${durationMins} mins`;
       } else {
-        const hours = Math.floor(diffMins / 60);
-        const mins = diffMins % 60;
+        const hours = Math.floor(durationMins / 60);
+        const mins = durationMins % 60;
         durationText = `${hours}h ${mins}m`;
       }
     }
@@ -95,30 +97,63 @@ export function exportVehiclesToExcel(
 
   // 5. Also add Summary KPI worksheet
   const inServiceCount = vehicles.filter(v => v.status === 'checked_in').length;
-  const completedCount = vehicles.filter(v => v.status === 'checked_out').length;
+  const completedVehicles = vehicles.filter(v => v.status === 'checked_out');
+  const completedCount = completedVehicles.length;
   const carCount = vehicles.filter(v => v.vehicleType === 'car').length;
   const bikeCount = vehicles.filter(v => v.vehicleType === 'bike').length;
 
+  // Calculate unique centers represented
+  const distinctCenterIds = new Set(vehicles.map(v => v.serviceCenterId));
+  const activeCentersCount = distinctCenterIds.size;
+
+  // Calculate Average Turnaround Duration
+  let avgDurationText = 'N/A (No completed vehicles)';
+  if (completedVehicles.length > 0) {
+    let totalMins = 0;
+    let countWithDuration = 0;
+    completedVehicles.forEach(v => {
+      if (v.checkinTime && v.checkoutTime) {
+        const diffMs = new Date(v.checkoutTime).getTime() - new Date(v.checkinTime).getTime();
+        totalMins += Math.max(0, Math.round(diffMs / 60000));
+        countWithDuration++;
+      }
+    });
+    if (countWithDuration > 0) {
+      const avgMins = Math.round(totalMins / countWithDuration);
+      if (avgMins < 60) {
+        avgDurationText = `${avgMins} mins`;
+      } else {
+        const h = Math.floor(avgMins / 60);
+        const m = avgMins % 60;
+        avgDurationText = `${h}h ${m}m (${avgMins} total mins)`;
+      }
+    }
+  }
+
   const summaryData = [
     { Metric: 'Report Generated', Value: new Date().toLocaleString('en-IN') },
-    { Metric: 'Selected Filter', Value: options?.centerName || 'All Service Centers' },
+    { Metric: 'Time Period Filter', Value: options?.timeFilterLabel || 'All Time' },
+    { Metric: 'Selected Service Center', Value: options?.centerName || 'All Service Centers' },
     { Metric: 'Status Filter', Value: options?.statusFilter || 'All Statuses' },
-    { Metric: 'Total Vehicle Records', Value: vehicles.length },
+    { Metric: 'Total Vehicles Filtered', Value: vehicles.length },
+    { Metric: 'Active Service Centers Represented', Value: activeCentersCount },
     { Metric: 'Active (In Service)', Value: inServiceCount },
     { Metric: 'Completed Checkouts', Value: completedCount },
+    { Metric: 'Average Turnaround Duration', Value: avgDurationText },
     { Metric: 'Car Inspections', Value: carCount },
     { Metric: 'Bike Inspections', Value: bikeCount },
     { Metric: 'Cloudflare D1 SQL Status', Value: 'Connected & Active' },
     { Metric: 'Cloudflare R2 Bucket', Value: 'gvd-inspection-photos' }
   ];
   const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-  wsSummary['!cols'] = [{ wch: 28 }, { wch: 35 }];
+  wsSummary['!cols'] = [{ wch: 34 }, { wch: 40 }];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary Overview');
 
   // 6. Generate filename and trigger download
   const dateStr = new Date().toISOString().slice(0, 10);
   const cleanCenter = (options?.centerName || 'All_Centers').replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `GVD_AutoWorld_Inspections_${cleanCenter}_${dateStr}.xlsx`;
+  const cleanTime = (options?.timeFilterLabel || 'All_Time').replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `GVD_AutoWorld_Inspections_${cleanCenter}_${cleanTime}_${dateStr}.xlsx`;
 
   XLSX.writeFile(wb, filename);
 }

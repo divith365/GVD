@@ -336,6 +336,20 @@ class AppStore {
     return updated;
   }
 
+  deleteVehicle(id: string): boolean {
+    const prevCount = this.vehicles.length;
+    this.vehicles = this.vehicles.filter(v => v.id !== id);
+    if (this.vehicles.length !== prevCount) {
+      this.saveVehicles();
+      // Sync deletion with Cloudflare D1 API
+      fetch(`/api/vehicles?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      }).catch(err => console.log('D1 delete vehicle error', err));
+      return true;
+    }
+    return false;
+  }
+
   resetToDefaults() {
     this.centers = [...INITIAL_SERVICE_CENTERS];
     this.managers = [...INITIAL_MANAGERS];

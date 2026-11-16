@@ -189,3 +189,40 @@ export const onRequestPut = async (context: { request: Request; env: Env }) => {
     });
   }
 };
+
+export const onRequestDelete = async (context: { request: Request; env: Env }) => {
+  try {
+    if (!context.env.DB) {
+      return new Response(JSON.stringify({ error: "Cloudflare D1 binding 'DB' not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const url = new URL(context.request.url);
+    const id = url.searchParams.get("id");
+
+    if (!id) {
+      return new Response(JSON.stringify({ error: "Missing required parameter 'id'" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 1. Delete associated inspection photos
+    await context.env.DB.prepare("DELETE FROM inspection_photos WHERE record_id = ?").bind(id).run();
+
+    // 2. Delete service record
+    await context.env.DB.prepare("DELETE FROM service_records WHERE id = ?").bind(id).run();
+
+    return new Response(JSON.stringify({ success: true, deletedId: id }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};
+
