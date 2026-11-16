@@ -1,20 +1,20 @@
 name = "gvd-autocare"
 compatibility_date = "2024-11-01"
 pages_build_output_dir = "./dist"
+account_id = "8c932fd5adf87c02f95522f48a8ef4f0"
 
 # Cloudflare D1 Database Binding
 [[d1_databases]]
 binding = "DB"
 database_name = "gvd_autocare_db"
-database_id = "YOUR_CLOUDFLARE_D1_DATABASE_ID" # Replace with your D1 ID
+database_id = "9a193cb4-fac9-44a9-b81a-a257cbd0f8c0"
 
 # Cloudflare R2 Bucket Binding (Zero Egress Photo Storage)
 [[r2_buckets]]
 binding = "PHOTOS_BUCKET"
-bucket_name = "gvd-inspection-photos" # Replace with your R2 Bucket Name
+bucket_name = "gvd-inspection-photos"
 preview_bucket_name = "gvd-inspection-photos-preview"
 
 # Environment Variables
 [vars]
 ENVIRONMENT = "production"
-# R2_PUBLIC_DOMAIN = "https://photos.yourdomain.com"
