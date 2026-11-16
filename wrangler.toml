@@ -8,11 +8,10 @@ binding = "DB"
 database_name = "gvd_autocare_db"
 database_id = "9a193cb4-fac9-44a9-b81a-a257cbd0f8c0"
 
-# Cloudflare R2 Bucket Binding (Zero Egress Photo Storage - enable after R2 activation)
-# [[r2_buckets]]
-# binding = "PHOTOS_BUCKET"
-# bucket_name = "gvd-inspection-photos"
-# preview_bucket_name = "gvd-inspection-photos-preview"
+# Cloudflare R2 Bucket Binding (Zero Egress Photo Storage)
+[[r2_buckets]]
+binding = "PHOTOS_BUCKET"
+bucket_name = "gvd-inspection-photos"
 
 # Environment Variables
 [vars]

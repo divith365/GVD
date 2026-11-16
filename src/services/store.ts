@@ -232,6 +232,23 @@ class AppStore {
       body: JSON.stringify(params)
     }).catch(err => console.log('D1 vehicle checkin sync error', err));
 
+    // Upload check-in photos to Cloudflare R2
+    for (const [slotKey, dataUrl] of Object.entries(params.checkinPhotos)) {
+      if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+        fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64Data: dataUrl,
+            vehicleNumber: params.vehicleNumber,
+            slotKey,
+            stage: 'checkin',
+            vehicleType: params.vehicleType
+          })
+        }).catch(err => console.log('R2 photo upload error', err));
+      }
+    }
+
     return newRecord;
   }
 
@@ -256,6 +273,23 @@ class AppStore {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, checkoutPhotos, notes })
     }).catch(err => console.log('D1 vehicle checkout sync error', err));
+
+    // Upload checkout photos to Cloudflare R2
+    for (const [slotKey, dataUrl] of Object.entries(checkoutPhotos)) {
+      if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+        fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64Data: dataUrl,
+            vehicleNumber: existing.vehicleNumber,
+            slotKey,
+            stage: 'checkout',
+            vehicleType: existing.vehicleType
+          })
+        }).catch(err => console.log('R2 checkout photo upload error', err));
+      }
+    }
 
     return updated;
   }
