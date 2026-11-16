@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { 
   Building2, Users, Car, Bike, Plus, Search, ShieldCheck, 
   MapPin, Phone, KeyRound, CheckCircle2, SplitSquareVertical, 
-  Cloud, Database, ExternalLink, Eye, EyeOff, Sparkles, Filter, Clock
+  Cloud, Database, ExternalLink, Eye, EyeOff, Sparkles, Filter, Clock,
+  FileSpreadsheet, Download, Calendar, Timer, UserCheck
 } from 'lucide-react';
 import { ServiceCenter, Manager, VehicleRecord, ServiceCenterType } from '../types';
 import { appStore, SessionUser } from '../services/store';
+import { exportVehiclesToExcel } from '../utils/exportUtils';
 
 interface AdminDashboardProps {
   session: SessionUser;
@@ -362,61 +364,75 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* TAB 1: VEHICLES & COMPARISON */}
       {activeTab === 'vehicles' && (
         <div className="space-y-4">
-          {/* Search bar & Status Filter Buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search bar, Status Filter Buttons & Excel Export Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Status Filter Buttons */}
-            <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs">
+            <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
                   statusFilter === 'all'
                     ? 'bg-brand-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                All Statuses
+                All ({vehicles.filter(v => selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId).length})
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('checked_in')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
                   statusFilter === 'checked_in'
                     ? 'bg-sky-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-sky-300'
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span>In Service</span>
+                <span>In Service ({vehicles.filter(v => (selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId) && v.status === 'checked_in').length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('checked_out')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
                   statusFilter === 'checked_out'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-emerald-300'
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Completed</span>
+                <span>Completed ({vehicles.filter(v => (selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId) && v.status === 'checked_out').length})</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-3 flex-1 justify-end">
-              <div className="relative flex-1 max-w-md">
+            {/* Actions: Search bar & Excel Export Button */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search by registration number, customer, or service..."
+                  placeholder="Search registration, customer..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+                  className="w-full pl-9 pr-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
                 />
               </div>
-              <span className="text-xs text-slate-400 whitespace-nowrap hidden sm:inline">
-                {filteredVehicles.length} vehicles
-              </span>
+
+              {/* Excel Export Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  exportVehiclesToExcel(filteredVehicles, centers, managers, {
+                    centerName: selectedCenter?.name || 'All Service Centers',
+                    statusFilter: statusFilter === 'all' ? 'All Statuses' : (statusFilter === 'checked_in' ? 'In Service' : 'Completed')
+                  });
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition whitespace-nowrap"
+                title="Export complete vehicle records (Check-in, Check-out, duration, photos) to Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Export Excel</span>
+              </button>
             </div>
           </div>
 
@@ -431,8 +447,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {filteredVehicles.map(v => {
                 const centerOfVehicle = centers.find(c => c.id === v.serviceCenterId);
                 const isCheckedOut = v.status === 'checked_out';
-                const checkinPhotosCount = Object.keys(v.checkinPhotos).length;
-                const checkoutPhotosCount = Object.keys(v.checkoutPhotos).length;
+                const checkinPhotosCount = Object.keys(v.checkinPhotos || {}).length;
+                const checkoutPhotosCount = Object.keys(v.checkoutPhotos || {}).length;
+                const checkinDate = v.checkinTime ? new Date(v.checkinTime) : null;
+                const checkoutDate = v.checkoutTime ? new Date(v.checkoutTime) : null;
+
+                // Turnaround Duration calculation
+                let durationText = 'In Progress';
+                if (checkinDate && checkoutDate) {
+                  const diffMs = checkoutDate.getTime() - checkinDate.getTime();
+                  const diffMins = Math.round(diffMs / 60000);
+                  durationText = diffMins < 60 ? `${diffMins} mins` : `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+                }
 
                 return (
                   <div
@@ -442,11 +468,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     title="Click card to view photo inspection & comparison"
                   >
                     <div>
-                      {/* Number Plate + Status */}
+                      {/* Top Header: Number Plate + Status */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 group-hover:border-amber-400/50 transition">
-                          {v.vehicleNumber}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-base text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 group-hover:border-amber-400/50 transition">
+                            {v.vehicleNumber}
+                          </span>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+                            {v.vehicleType}
+                          </span>
+                        </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                           isCheckedOut
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
@@ -456,33 +487,96 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </span>
                       </div>
 
-                      {/* Center & Service Type */}
+                      {/* Service & Center */}
                       <div className="mt-2.5 space-y-0.5">
                         <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                          {v.vehicleType === 'car' ? <Car className="w-3.5 h-3.5 text-blue-400" /> : <Bike className="w-3.5 h-3.5 text-emerald-400" />}
-                          <span>{v.serviceType || 'Standard Inspection'}</span>
+                          {v.vehicleType === 'car' ? <Car className="w-3.5 h-3.5 text-blue-400 shrink-0" /> : <Bike className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                          <span className="truncate">{v.serviceType || 'Standard Inspection'}</span>
                         </p>
                         <p className="text-[11px] text-slate-400 truncate">
-                          Center: {centerOfVehicle?.name}
+                          Center: <strong className="text-slate-300">{centerOfVehicle?.name}</strong>
                         </p>
                       </div>
 
-                      {/* Customer info */}
+                      {/* Customer info & Quick Call */}
                       {v.customerName && (
-                        <p className="text-[11px] text-slate-400 mt-1">
-                          Customer: {v.customerName} {v.customerPhone && `• ${v.customerPhone}`}
-                        </p>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1 pt-1 border-t border-slate-800/60">
+                          <span className="truncate">Client: <strong className="text-slate-300">{v.customerName}</strong></span>
+                          {v.customerPhone && (
+                            <a
+                              href={`tel:${v.customerPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-amber-400 hover:text-amber-300 font-mono text-[10px] flex items-center gap-1 hover:underline ml-2 shrink-0"
+                            >
+                              <Phone className="w-3 h-3" />
+                              {v.customerPhone}
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
 
-                    {/* Inspection Photo Summary */}
-                    <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 text-[11px] flex items-center justify-between">
-                      <span className="text-sky-300">
-                        Check-in: <strong>{checkinPhotosCount}</strong> photos
-                      </span>
-                      <span className={isCheckedOut ? 'text-emerald-300' : 'text-slate-500'}>
-                        Check-out: <strong>{checkoutPhotosCount}</strong> photos
-                      </span>
+                    {/* Comprehensive Check-in / Check-out Timeline */}
+                    <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 space-y-2 text-[11px]">
+                      {/* Check-In Row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-sky-400 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Check-In:</span>
+                        </div>
+                        <div className="text-right text-slate-300 font-mono">
+                          {checkinDate ? (
+                            <span>
+                              {checkinDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {checkinDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          ) : '-'}
+                          {v.managerName && (
+                            <span className="block text-[10px] text-slate-400 font-sans">
+                              By {v.managerName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Check-Out Row */}
+                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-850">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Check-Out:</span>
+                        </div>
+                        <div className="text-right font-mono">
+                          {checkoutDate ? (
+                            <span className="text-slate-300">
+                              {checkoutDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {checkoutDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          ) : (
+                            <span className="text-sky-400 font-semibold text-[10px] font-sans">
+                              ● Ongoing Service
+                            </span>
+                          )}
+                          <span className="block text-[10px] text-amber-400/90 font-sans font-medium">
+                            ⏱️ Duration: {durationText}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Inspection Photo Summary & Notes */}
+                    <div className="space-y-1.5">
+                      <div className="bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800 text-[10px] flex items-center justify-between">
+                        <span className="text-sky-300 font-semibold">
+                          📸 Check-in: <strong>{checkinPhotosCount}</strong> photos (WebP)
+                        </span>
+                        <span className={isCheckedOut ? 'text-emerald-300 font-semibold' : 'text-slate-500'}>
+                          📸 Check-out: <strong>{checkoutPhotosCount}</strong> photos (WebP)
+                        </span>
+                      </div>
+
+                      {v.notes && (
+                        <p className="text-[10px] text-slate-400 bg-slate-950/40 px-2 py-1 rounded border border-slate-800/60 truncate">
+                          📝 Notes: {v.notes}
+                        </p>
+                      )}
                     </div>
 
                     {/* Action button */}
