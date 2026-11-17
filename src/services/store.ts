@@ -192,19 +192,25 @@ class AppStore {
     return { manager, center };
   }
 
-  async authenticateWithPin(pin: string): Promise<SessionUser | null> {
+  async authenticateWithPin(pin: string, expectedRole?: 'manager' | 'admin'): Promise<SessionUser | null> {
+    const trimmedPin = pin.trim();
+
     // 1. Try remote Cloudflare D1 API first
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: pin.trim() })
+        body: JSON.stringify({ pin: trimmedPin, role: expectedRole })
       });
       if (res.ok) {
         const data = await res.json() as any;
         if (data.role === 'admin') {
+          // If manager login is expected, reject admin PIN
+          if (expectedRole === 'manager') return null;
           return { role: 'admin', name: data.name || 'Master Admin' };
         }
+        // If admin login is expected, reject manager PIN
+        if (expectedRole === 'admin') return null;
         return {
           role: 'manager',
           name: data.manager?.name || data.name,
@@ -218,10 +224,20 @@ class AppStore {
     }
 
     // 2. Local fallback
-    if (pin.trim() === '88888888') {
+    if (trimmedPin === '88888888') {
+      // If user is trying to log in as manager, 88888888 must NOT log into admin!
+      if (expectedRole === 'manager') {
+        return null;
+      }
       return { role: 'admin', name: 'Master Admin' };
     }
-    const mgr = this.verifyManagerPin(pin.trim());
+
+    // If admin login is requested, manager PINs cannot log into admin
+    if (expectedRole === 'admin') {
+      return null;
+    }
+
+    const mgr = this.verifyManagerPin(trimmedPin);
     if (mgr) {
       return {
         role: 'manager',

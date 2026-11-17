@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertCircle, Loader2, Download, KeyRound, Sparkles } from 'lucide-react';
+import { Shield, AlertCircle, Loader2, Download, ArrowLeft, Sparkles, KeyRound } from 'lucide-react';
 import { appStore, SessionUser } from '../services/store';
 
 interface LoginViewProps {
@@ -7,10 +7,13 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+  // Always default to manager login for daily operational staff
   const [loginMode, setLoginMode] = useState<'manager' | 'admin'>('manager');
   const [pin, setPin] = useState<string>('');
   const [pinError, setPinError] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
+
+  const isAdmin = loginMode === 'admin';
 
   const handleKeypadPress = (digit: string) => {
     if (pin.length < 8 && !isVerifying) {
@@ -36,15 +39,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setIsVerifying(true);
     setPinError('');
     try {
-      const user = await appStore.authenticateWithPin(pinToTest);
+      // Pass the current mode ('manager' | 'admin') so PINs cannot be confused
+      const user = await appStore.authenticateWithPin(pinToTest, loginMode);
       if (user) {
         onLoginSuccess(user);
       } else {
-        setPinError(`Invalid 8-digit ${loginMode === 'admin' ? 'Admin' : 'Manager'} PIN.`);
+        if (!isAdmin && pinToTest.trim() === '88888888') {
+          setPinError('This is the Admin PIN. Click "Admin Login" below to sign in as Admin.');
+        } else {
+          setPinError(`Invalid 8-digit ${isAdmin ? 'Admin' : 'Manager'} PIN.`);
+        }
         setTimeout(() => {
           setPin('');
           setIsVerifying(false);
-        }, 700);
+        }, 900);
       }
     } catch (err) {
       setPinError('Verification error. Please try again.');
@@ -58,7 +66,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     verifyPin('88888888');
   };
 
-  // Enable physical keyboard entry on desktop
+  // Physical keyboard entry on desktop
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
@@ -75,14 +83,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pin, isVerifying, loginMode]);
 
-  const isAdmin = loginMode === 'admin';
-
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-sm bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden relative">
+      <div className={`w-full max-w-sm bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border rounded-3xl shadow-2xl shadow-black/80 overflow-hidden relative transition-colors duration-300 ${
+        isAdmin ? 'border-emerald-500/40' : 'border-amber-500/30'
+      }`}>
         
         {/* Golden Brand Header with Logo */}
-        <div className="pt-6 pb-2 px-6 text-center relative overflow-hidden bg-gradient-to-b from-amber-950/30 via-slate-900 to-transparent">
+        <div className={`pt-6 pb-3 px-6 text-center relative overflow-hidden bg-gradient-to-b ${
+          isAdmin ? 'from-emerald-950/30' : 'from-amber-950/30'
+        } via-slate-900 to-transparent`}>
           <div className="w-24 sm:w-28 mx-auto mb-2 transition hover:scale-105 duration-300">
             <img
               src="/logo.webp"
@@ -96,11 +106,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </h2>
 
           {/* Quick Install Link/Button */}
-          <div className="mt-2">
+          <div className="mt-1.5">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('open-gvd-install'))}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition active:scale-95 shadow-sm"
             >
               <Download className="w-3 h-3 text-amber-400" />
               <span>Install App on Mobile</span>
@@ -108,63 +118,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Tab Switcher: Manager PIN vs Admin Login */}
-        <div className="px-5 pt-3">
-          <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMode('manager');
-                setPin('');
-                setPinError('');
-              }}
-              className={`py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 ${
-                !isAdmin
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Manager PIN</span>
-            </button>
+        {/* Main Content Area */}
+        <div className="px-5 pb-6 pt-3 space-y-4">
 
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMode('admin');
-                setPin('');
-                setPinError('');
-              }}
-              className={`py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 ${
-                isAdmin
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin Login</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Main PIN Entry Panel */}
-        <div className="px-5 pb-6 pt-4 space-y-4">
-
-          {/* Mode Subtitle & Quick Fill */}
-          <div className="text-center space-y-1">
-            <p className="text-xs font-medium text-slate-300">
-              {isAdmin ? 'Enter 8-digit Admin PIN' : 'Enter 8-digit Manager PIN'}
-            </p>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={handleQuickAdminFill}
-                disabled={isVerifying}
-                className="inline-flex items-center gap-1 text-[11px] text-emerald-400/90 hover:text-emerald-300 transition underline underline-offset-2 decoration-emerald-500/40"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>Quick Admin Fill (88888888)</span>
-              </button>
+          {/* Subtitle / Mode Indicator */}
+          <div className="text-center">
+            {isAdmin ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Admin Portal Login</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                <span>Enter 8-digit Manager PIN</span>
+              </div>
             )}
           </div>
           
@@ -194,7 +162,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
 
             {/* Status / Loading / Error indicator */}
-            <div className="min-h-[22px] flex items-center justify-center pt-1">
+            <div className="min-h-[22px] flex items-center justify-center pt-1 text-center px-2">
               {isVerifying ? (
                 <span className={`text-xs flex items-center gap-1.5 font-semibold ${isAdmin ? 'text-emerald-300' : 'text-amber-300'}`}>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -202,7 +170,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 </span>
               ) : pinError ? (
                 <span className="text-xs text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-lg border border-red-500/20 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 shrink-0" /> {pinError}
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{pinError}</span>
                 </span>
               ) : (
                 <span className="text-[11px] text-slate-500">
@@ -249,6 +218,54 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             >
               ⌫
             </button>
+          </div>
+
+          {/* Bottom Area Below Keypad */}
+          <div className="pt-3 border-t border-slate-800/60 text-center">
+            {!isAdmin ? (
+              // Manager Screen: Small Admin Login Link at the Bottom
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMode('admin');
+                  setPin('');
+                  setPinError('');
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition py-1.5 px-3 rounded-xl hover:bg-slate-800/70 border border-transparent hover:border-slate-800"
+              >
+                <Shield className="w-3.5 h-3.5 text-slate-500" />
+                <span>Admin Login</span>
+              </button>
+            ) : (
+              // Admin Screen: Default Admin PIN fill + Back to Manager Login
+              <div className="space-y-2.5">
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleQuickAdminFill}
+                    disabled={isVerifying}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 transition py-1.5 px-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 active:scale-95 shadow-sm shadow-emerald-950"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Default Admin PIN (88888888)</span>
+                  </button>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMode('manager');
+                      setPin('');
+                      setPinError('');
+                    }}
+                    className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-amber-300 transition py-1 px-3 rounded-lg hover:bg-slate-800/50"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Manager Login</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

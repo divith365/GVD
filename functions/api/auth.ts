@@ -11,7 +11,7 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
       });
     }
 
-    const { pin } = await context.request.json() as { pin: string };
+    const { pin, role } = await context.request.json() as { pin: string; role?: 'manager' | 'admin' };
 
     if (!pin || pin.length < 6) {
       return new Response(JSON.stringify({ error: "Invalid PIN length" }), {
@@ -31,6 +31,13 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
 
     if (!user) {
       return new Response(JSON.stringify({ error: "Invalid 8-digit PIN. Please try again." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    if (role && user.role !== role) {
+      return new Response(JSON.stringify({ error: `This PIN is not valid for ${role} login.` }), {
         status: 401,
         headers: { "Content-Type": "application/json" }
       });
