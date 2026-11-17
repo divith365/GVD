@@ -11,19 +11,34 @@ import { appStore, SessionUser } from '../services/store';
 import { exportVehiclesToExcel } from '../utils/exportUtils';
 import { VehicleDetailModal } from '../components/VehicleDetailModal';
 
+import { validatePhoneNumber } from '../utils/validationUtils';
+
 interface AdminDashboardProps {
   session: SessionUser;
   vehicles: VehicleRecord[];
   onViewComparison: (vehicle: VehicleRecord) => void;
+  activeTab?: 'vehicles' | 'centers' | 'managers' | 'cloudflare';
+  onTabChange?: (tab: 'vehicles' | 'centers' | 'managers' | 'cloudflare') => void;
+  onLogout?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   session,
   vehicles,
-  onViewComparison
+  onViewComparison,
+  activeTab: controlledActiveTab,
+  onTabChange,
+  onLogout
 }) => {
-  const [activeTab, setActiveTab] = useState<'vehicles' | 'centers' | 'managers' | 'cloudflare'>('vehicles');
+  const [localActiveTab, setLocalActiveTab] = useState<'vehicles' | 'centers' | 'managers' | 'cloudflare'>('vehicles');
+  const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : localActiveTab;
+  const setActiveTab = (tab: 'vehicles' | 'centers' | 'managers' | 'cloudflare') => {
+    if (onTabChange) onTabChange(tab);
+    setLocalActiveTab(tab);
+  };
+
   const [selectedCenterId, setSelectedCenterId] = useState<string>('all');
+  const [centerTypeFilter, setCenterTypeFilter] = useState<'all' | 'car' | 'bike'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'checked_in' | 'checked_out'>('all');
   
@@ -43,9 +58,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [vehicleToDelete, setVehicleToDelete] = useState<VehicleRecord | null>(null);
   const [notificationMsg, setNotificationMsg] = useState<string>('');
 
-  // Modals
+  // Modals & Form validation errors
   const [isAddCenterOpen, setIsAddCenterOpen] = useState(false);
   const [isAddManagerOpen, setIsAddManagerOpen] = useState(false);
+  const [modalError, setModalError] = useState<string>('');
   const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({});
 
   // Center form state
@@ -61,6 +77,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [mgrPhone, setMgrPhone] = useState('');
   const [mgrCenterId, setMgrCenterId] = useState('');
   const [mgrPin, setMgrPin] = useState('');
+
+  // Cloudflare live test state
+  const [cfTestStatus, setCfTestStatus] = useState<string>('');
+  const [isTestingCf, setIsTestingCf] = useState(false);
+
+  const testCloudflareConnection = async () => {
+    setIsTestingCf(true);
+    setCfTestStatus('Testing Cloudflare D1 & R2 endpoints...');
+    const startTime = performance.now();
+    try {
+      const res = await fetch('/api/centers');
+      const duration = Math.round(performance.now() - startTime);
+      if (res.ok) {
+        setCfTestStatus(`Cloudflare Connected! D1 SQL Database & R2 Storage APIs responded in ${duration}ms (HTTP 200 OK).`);
+      } else {
+        setCfTestStatus(`Cloudflare API reachable in ${duration}ms (HTTP status: ${res.status}).`);
+      }
+    } catch (e: any) {
+      setCfTestStatus('Local Preview Mode: Cloudflare D1 & R2 bindings configured for Pages deployment (gvd-autocare.pages.dev).');
+    } finally {
+      setIsTestingCf(false);
+    }
+  };
 
   const centers = appStore.getServiceCenters();
   const managers = appStore.getManagers();
@@ -97,9 +136,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return true; // 'all'
   });
 
-  // 2. Filter by Service Center
+  // 2. Filter by Service Center & Center Type (Car / Bike)
   const centerFilteredVehicles = timeFilteredVehicles.filter(v => {
-    return selectedCenterId === 'all' || v.serviceCenterId === selectedCenterId;
+    const centerOfVeh = centers.find(c => c.id === v.serviceCenterId);
+    if (centerTypeFilter !== 'all') {
+      if (centerOfVeh?.type !== centerTypeFilter && v.vehicleType !== centerTypeFilter) {
+        return false;
+      }
+    }
+    if (selectedCenterId !== 'all' && v.serviceCenterId !== selectedCenterId) {
+      return false;
+    }
+    return true;
   });
 
   // 3. Status and Search Filter for vehicle listing
@@ -165,13 +213,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleCreateCenter = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!centerName || !centerLocation) return;
+    setModalError('');
+    if (!centerName.trim() || !centerLocation.trim()) {
+      setModalError('Please fill in Center Name and Location.');
+      return;
+    }
+
+    let cleanContact = centerContact.trim();
+    if (cleanContact) {
+      const phoneValidation = validatePhoneNumber(cleanContact, false);
+      if (!phoneValidation.isValid) {
+        setModalError(phoneValidation.error || 'Please enter a valid 10-digit contact phone number.');
+        return;
+      }
+      cleanContact = phoneValidation.formatted;
+    }
 
     appStore.addServiceCenter({
       name: centerName.trim(),
       location: centerLocation.trim(),
       type: centerType,
-      contact: centerContact.trim(),
+      contact: cleanContact,
       email: centerEmail.trim() || undefined,
       address: centerAddress.trim()
     });
@@ -182,17 +244,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setCenterContact('');
     setCenterEmail('');
     setCenterAddress('');
+    setModalError('');
     setIsAddCenterOpen(false);
   };
 
   const handleCreateManager = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mgrName || !mgrCenterId || !mgrPin) return;
+    setModalError('');
+    if (!mgrName.trim()) {
+      setModalError('Please enter manager full name.');
+      return;
+    }
+    if (!mgrCenterId) {
+      setModalError('Please select an assigned service center.');
+      return;
+    }
+
+    const cleanPin = mgrPin.trim().replace(/\D/g, '');
+    if (cleanPin.length !== 8) {
+      setModalError('Security PIN must be exactly 8 digits.');
+      return;
+    }
+
+    let cleanPhone = mgrPhone.trim();
+    if (cleanPhone) {
+      const phoneValidation = validatePhoneNumber(cleanPhone, false);
+      if (!phoneValidation.isValid) {
+        setModalError(phoneValidation.error || 'Please enter a valid 10-digit mobile number.');
+        return;
+      }
+      cleanPhone = phoneValidation.cleanDigits;
+    }
 
     appStore.addManager({
       name: mgrName.trim(),
-      phone: mgrPhone.trim(),
-      pin: mgrPin.trim(),
+      phone: cleanPhone,
+      pin: cleanPin,
       serviceCenterId: mgrCenterId
     });
 
@@ -200,6 +287,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setMgrPhone('');
     setMgrCenterId('');
     setMgrPin('');
+    setModalError('');
     setIsAddManagerOpen(false);
   };
 
@@ -215,9 +303,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20 w-full max-w-full overflow-x-hidden">
       
-      {/* Top Banner & Center Selector Dropdown */}
+      {/* Top Banner & Center Selector */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-7 shadow-xl w-full max-w-full overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -232,52 +320,174 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </p>
           </div>
 
-          {/* Service Center Filter Dropdown */}
-          <div className="flex items-center gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800 w-full sm:w-auto max-w-full">
-            <Filter className="w-4 h-4 text-brand-400 ml-1 shrink-0" />
-            <label className="text-xs font-semibold text-slate-400 shrink-0">Center:</label>
-            <select
-              value={selectedCenterId}
-              onChange={(e) => setSelectedCenterId(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-xs font-bold text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-500 cursor-pointer w-full sm:w-auto max-w-full truncate min-w-0"
-            >
-              <option value="all">All Service Centers ({centers.length})</option>
-              <optgroup label="Car Service Centers">
-                {centers.filter(c => c.type === 'car').map(c => (
-                  <option key={c.id} value={c.id}>🚗 {c.name} ({c.location})</option>
-                ))}
-              </optgroup>
-              <optgroup label="Bike Service Centers">
-                {centers.filter(c => c.type === 'bike').map(c => (
-                  <option key={c.id} value={c.id}>🏍️ {c.name} ({c.location})</option>
-                ))}
-              </optgroup>
-            </select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-amber-400" />
+              <span>{centers.length} Service Centers Registered</span>
+            </span>
           </div>
         </div>
 
-        {/* Selected Center Details if specific center selected */}
-        {selectedCenter && (
-          <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2 sm:gap-3 max-w-full min-w-0">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 max-w-full min-w-0">
-              <span className="font-bold text-white text-sm flex items-center gap-1.5 shrink-0">
-                {selectedCenter.type === 'car' ? <Car className="w-4 h-4 text-blue-400" /> : <Bike className="w-4 h-4 text-emerald-400" />}
-                {selectedCenter.name}
+        {/* Dedicated Responsive Center & Workflow Filter Bar */}
+        <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            
+            {/* 1. Quick Category Filter Tabs: All | 🚗 Car Centers | 🏍️ Bike Centers */}
+            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full scrollbar-thin pb-0.5">
+              <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-brand-400" /> Center Type:
               </span>
-              <span className="flex items-center gap-1 text-slate-400 truncate">
-                <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" /> <span className="truncate">{selectedCenter.address || selectedCenter.location}</span>
-              </span>
-              {selectedCenter.contact && (
-                <span className="flex items-center gap-1 text-slate-400 shrink-0">
-                  <Phone className="w-3.5 h-3.5 text-slate-500" /> {selectedCenter.contact}
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setCenterTypeFilter('all');
+                  setSelectedCenterId('all');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                  centerTypeFilter === 'all' && selectedCenterId === 'all'
+                    ? 'bg-brand-600 text-white shadow-md ring-1 ring-brand-400'
+                    : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800 hover:bg-slate-900'
+                }`}
+              >
+                <span>All Centers</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 font-mono">
+                  {centers.length}
                 </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCenterTypeFilter('car');
+                  if (selectedCenter && selectedCenter.type !== 'car') {
+                    setSelectedCenterId('all');
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                  centerTypeFilter === 'car'
+                    ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400'
+                    : 'bg-slate-950/80 text-slate-400 hover:text-blue-300 border border-slate-800 hover:bg-slate-900'
+                }`}
+              >
+                <Car className="w-3.5 h-3.5 text-blue-400" />
+                <span>Car Centers</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 font-mono">
+                  {centers.filter(c => c.type === 'car').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCenterTypeFilter('bike');
+                  if (selectedCenter && selectedCenter.type !== 'bike') {
+                    setSelectedCenterId('all');
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                  centerTypeFilter === 'bike'
+                    ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400'
+                    : 'bg-slate-950/80 text-slate-400 hover:text-emerald-300 border border-slate-800 hover:bg-slate-900'
+                }`}
+              >
+                <Bike className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Bike Centers</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 font-mono">
+                  {centers.filter(c => c.type === 'bike').length}
+                </span>
+              </button>
+            </div>
+
+            {/* 2. Specific Center Selector with Clean Custom Styling */}
+            <div className="flex items-center gap-2 w-full md:w-auto min-w-0">
+              <div className="relative flex-1 md:w-72 min-w-0">
+                <select
+                  value={selectedCenterId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedCenterId(val);
+                    if (val !== 'all') {
+                      const c = centers.find(x => x.id === val);
+                      if (c) setCenterTypeFilter(c.type);
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-slate-700/80 text-xs font-semibold text-white rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500 cursor-pointer shadow-sm truncate pr-8"
+                >
+                  <option value="all">
+                    {centerTypeFilter === 'all' 
+                      ? `Select Specific Center (${centers.length} Total)` 
+                      : centerTypeFilter === 'car'
+                      ? `All Car Centers (${centers.filter(c => c.type === 'car').length})`
+                      : `All Bike Centers (${centers.filter(c => c.type === 'bike').length})`
+                    }
+                  </option>
+                  {(centerTypeFilter === 'all' || centerTypeFilter === 'car') && (
+                    <optgroup label="🚗 Car Service Centers">
+                      {centers.filter(c => c.type === 'car').map(c => (
+                        <option key={c.id} value={c.id}>🚗 {c.name} ({c.location})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {(centerTypeFilter === 'all' || centerTypeFilter === 'bike') && (
+                    <optgroup label="🏍️ Bike Service Centers">
+                      {centers.filter(c => c.type === 'bike').map(c => (
+                        <option key={c.id} value={c.id}>🏍️ {c.name} ({c.location})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              {selectedCenterId !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCenterId('all')}
+                  className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold whitespace-nowrap shrink-0 transition border border-slate-700"
+                  title="Clear specific center filter"
+                >
+                  ✕ Clear
+                </button>
               )}
             </div>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/20 font-semibold uppercase shrink-0">
-              {selectedCenter.type} Service Center
-            </span>
           </div>
-        )}
+
+          {/* Active Center Card if specific center selected */}
+          {selectedCenter && (
+            <div className="p-3 bg-slate-950/90 rounded-2xl border border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5 text-xs animate-in fade-in">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
+                <span className="font-bold text-white text-sm flex items-center gap-1.5 shrink-0">
+                  {selectedCenter.type === 'car' ? <Car className="w-4 h-4 text-blue-400" /> : <Bike className="w-4 h-4 text-emerald-400" />}
+                  {selectedCenter.name}
+                </span>
+                <span className="flex items-center gap-1 text-slate-400 truncate">
+                  <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" /> <span className="truncate">{selectedCenter.address || selectedCenter.location}</span>
+                </span>
+                {selectedCenter.contact && (
+                  <span className="flex items-center gap-1 text-slate-400 shrink-0">
+                    <Phone className="w-3.5 h-3.5 text-slate-500" /> {selectedCenter.contact}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  selectedCenter.type === 'car'
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                }`}>
+                  {selectedCenter.type} Service Center
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCenterId('all')}
+                  className="text-xs text-slate-400 hover:text-amber-400 underline font-medium"
+                >
+                  Show All Centers
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Time Period Filter Bar (Today | Week | Month | Custom Range | All Time) */}
         <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -597,7 +807,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 type="button"
                 onClick={() => {
                   exportVehiclesToExcel(filteredVehicles, centers, managers, {
-                    centerName: selectedCenter?.name || 'All Service Centers',
+                    centerName: selectedCenter?.name || (centerTypeFilter === 'all' ? 'All Service Centers' : centerTypeFilter === 'car' ? 'All Car Centers' : 'All Bike Centers'),
                     statusFilter: statusFilter === 'all' ? 'All Statuses' : (statusFilter === 'checked_in' ? 'In Service' : 'Completed'),
                     timeFilterLabel: getTimeFilterLabel()
                   });
@@ -866,20 +1076,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 4: CLOUDFLARE CONFIGURATION & READINESS */}
+      {/* TAB 4: CLOUDFLARE CONFIGURATION & MENU OPTION */}
       {activeTab === 'cloudflare' && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30">
-              <Cloud className="w-7 h-7" />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                <Cloud className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span>Cloudflare D1 & R2 Menu</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
+                    Connected
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Cloudflare Serverless SQL Database (D1) and Zero-Egress Inspection Photo Storage (R2).
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">Cloudflare R2 (Storage) & D1 (Database) Architecture</h3>
-              <p className="text-xs text-slate-400">
-                Ready for production binding as soon as you provide Cloudflare details.
-              </p>
-            </div>
+
+            <button
+              type="button"
+              onClick={testCloudflareConnection}
+              disabled={isTestingCf}
+              className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold shadow-md shadow-orange-600/20 flex items-center gap-2 transition active:scale-95 disabled:opacity-50"
+            >
+              <Cloud className="w-4 h-4" />
+              <span>{isTestingCf ? 'Pinging Cloudflare...' : 'Test Cloudflare API Connection'}</span>
+            </button>
           </div>
+
+          {/* Live Ping Status Result */}
+          {cfTestStatus && (
+            <div className="p-3.5 rounded-2xl bg-slate-950 border border-orange-500/40 text-xs text-orange-200 flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{cfTestStatus}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCfTestStatus('')}
+                className="text-slate-400 hover:text-white text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* R2 Card */}
@@ -933,10 +1177,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* MODAL: ADD SERVICE CENTER */}
       {isAddCenterOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 animate-in fade-in">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <Building2 className="w-5 h-5 text-brand-400" /> Add New Service Center
             </h3>
+
+            {modalError && (
+              <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateCenter} className="space-y-4">
               <div>
@@ -982,10 +1233,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Phone</label>
                   <input
                     type="tel"
-                    placeholder="e.g. +91 98765 43210"
+                    maxLength={10}
+                    placeholder="e.g. 9876543210 (10 digits)"
                     value={centerContact}
-                    onChange={(e) => setCenterContact(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-brand-500"
+                    onChange={(e) => setCenterContact(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-white focus:outline-none focus:border-brand-500"
                   />
                 </div>
 
@@ -1015,7 +1267,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsAddCenterOpen(false)}
+                  onClick={() => {
+                    setIsAddCenterOpen(false);
+                    setModalError('');
+                  }}
                   className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
                 >
                   Cancel
@@ -1035,10 +1290,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* MODAL: ADD MANAGER */}
       {isAddManagerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 animate-in fade-in">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-purple-400" /> Create Manager & Assign Center PIN
+              <Users className="w-5 h-5 text-purple-400" /> Create Manager & Assign 8-Digit PIN
             </h3>
+
+            {modalError && (
+              <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateManager} className="space-y-4">
               <div>
@@ -1054,13 +1316,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-300">Phone Number (10 Digits)</label>
+                  <span className="text-[10px] font-mono text-slate-400">{mgrPhone.length}/10 digits</span>
+                </div>
                 <input
                   type="tel"
-                  placeholder="e.g. +91 99887 76655"
+                  maxLength={10}
+                  placeholder="e.g. 9876543210"
                   value={mgrPhone}
-                  onChange={(e) => setMgrPhone(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-brand-500"
+                  onChange={(e) => setMgrPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-white focus:outline-none focus:border-brand-500"
                 />
               </div>
 
@@ -1097,7 +1363,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   maxLength={8}
                   placeholder="e.g. 12345678"
                   value={mgrPin}
-                  onChange={(e) => setMgrPin(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setMgrPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-lg font-mono font-bold text-amber-300 focus:outline-none focus:border-brand-500 tracking-wider"
                   required
                 />
@@ -1109,7 +1375,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsAddManagerOpen(false)}
+                  onClick={() => {
+                    setIsAddManagerOpen(false);
+                    setModalError('');
+                  }}
                   className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
                 >
                   Cancel

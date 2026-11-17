@@ -159,12 +159,12 @@ export const InstallPrompt: React.FC = () => {
               <X className="w-4 h-4" />
             </button>
 
-            {/* App Icon & Badge */}
-            <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-black border border-amber-500/40 p-2.5 flex items-center justify-center shadow-lg shadow-amber-500/10">
-              <img src="/logo.webp" alt="GVD Auto World" className="w-full h-full object-contain" />
+            {/* App Icon & Badge - Clean & Compact */}
+            <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-950 border border-amber-500/30 p-1 flex items-center justify-center shadow-md shadow-amber-500/10">
+              <img src="/pwa-192x192.png" alt="GVD Auto World" className="w-full h-full object-contain rounded-xl" />
             </div>
 
-            <h3 className="text-lg font-bold text-white tracking-tight">
+            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
               Install GVD Auto App
             </h3>
             <p className="text-xs text-slate-400 mt-1 mb-5">

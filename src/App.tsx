@@ -19,6 +19,7 @@ export const App: React.FC = () => {
   const [currentFlow, setCurrentFlow] = useState<'dashboard' | 'car_checkin' | 'bike_checkin' | 'checkout'>('dashboard');
   const [selectedVehicleForCheckout, setSelectedVehicleForCheckout] = useState<VehicleRecord | null>(null);
   const [comparisonVehicle, setComparisonVehicle] = useState<VehicleRecord | null>(null);
+  const [adminTab, setAdminTab] = useState<'vehicles' | 'centers' | 'managers' | 'cloudflare'>('vehicles');
 
   // Subscribe to store changes
   useEffect(() => {
@@ -31,6 +32,7 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     setSession(null);
     setCurrentFlow('dashboard');
+    setAdminTab('vehicles');
   };
 
   const handleStartCheckin = () => {
@@ -60,6 +62,8 @@ export const App: React.FC = () => {
       <Header
         session={session}
         onLogout={handleLogout}
+        adminTab={adminTab}
+        onAdminTabChange={setAdminTab}
       />
 
       <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
@@ -70,6 +74,9 @@ export const App: React.FC = () => {
             session={session}
             vehicles={vehicles}
             onViewComparison={(v) => setComparisonVehicle(v)}
+            activeTab={adminTab}
+            onTabChange={setAdminTab}
+            onLogout={handleLogout}
           />
         ) : currentFlow === 'car_checkin' ? (
           <CarCheckinFlow
